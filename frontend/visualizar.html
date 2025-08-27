@@ -123,8 +123,8 @@
                 <button id="exportBtn" class="bg-green-500 text-white px-8 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-green-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-3">
                     <i class="fas fa-download"></i>Exportar
                 </button>
-                <button onclick="testCopyPaste()" class="bg-yellow-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-yellow-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Testar funcionalidade de copiar e colar">
-                    <i class="fas fa-clipboard-check"></i>Testar Copiar/Colar
+                <button onclick="testCopyPaste()" class="bg-yellow-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-yellow-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Testar funcionalidade de copiar/colar e Ctrl+Z">
+                    <i class="fas fa-clipboard-check"></i>Testar Copiar/Colar + Ctrl+Z
                 </button>
 
             </div>
@@ -149,13 +149,14 @@
                 </h3>
                 <div class="mt-2 text-sm text-gray-600">
                     <i class="fas fa-info-circle mr-1"></i>
-                    <strong>Seleção de Células:</strong><br>
+                    <strong>Seleção e Edição de Células:</strong><br>
                     • Clique simples: Seleciona uma célula<br>
                     • Ctrl+Clique: Adiciona/remove células da seleção<br>
                     • Shift+Clique: Seleciona intervalo de células<br>
                     • Ctrl+C: Copia células selecionadas<br>
                     • Delete: Limpa células selecionadas<br>
-                    • F2: Edita primeira célula selecionada
+                    • F2: Edita primeira célula selecionada<br>
+                    • <strong>Ctrl+Z: Desfaz última alteração na célula em edição</strong>
                 </div>
             </div>
             
@@ -537,7 +538,9 @@
             itemsPerPage: 100,
             totalResults: 0,
             currentResults: [],
-            allResults: []
+            allResults: [],
+            editHistory: new Map(), // Histórico de edições por célula
+            maxHistorySize: 10 // Máximo de alterações por célula
         };
 
         // Elementos do DOM
@@ -604,6 +607,26 @@
                 const input = document.getElementById(inputId);
                 if (input) {
                     enableCopyPaste(input);
+                }
+            });
+            
+            // Listener global para Ctrl+Z
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.key === 'z') {
+                    e.preventDefault();
+                    
+                    // Se houver uma célula em edição, desfazer nela
+                    const editingCell = document.querySelector('#excelTable td.editing');
+                    if (editingCell) {
+                        const cellId = editingCell.id;
+                        if (undoLastEdit(cellId)) {
+                            showMessage('Alteração desfeita com sucesso!', 'success');
+                        } else {
+                            showMessage('Nada para desfazer nesta célula.', 'info');
+                        }
+                    } else {
+                        showMessage('Nenhuma célula em edição para desfazer.', 'info');
+                    }
                 }
             });
         }
@@ -974,6 +997,9 @@
             textarea.className = 'excel-input';
             textarea.rows = 1;
             
+            // Armazenar o valor original para o histórico
+            textarea.setAttribute('data-original-value', currentValue);
+            
             // Substituir conteúdo da célula
             cell.innerHTML = '';
             cell.appendChild(textarea);
@@ -987,13 +1013,16 @@
             });
             
             // Eventos do textarea
-            textarea.addEventListener('blur', () => saveCell(cellId, textarea.value));
+            textarea.addEventListener('blur', () => saveCell(cellId, textarea.value, currentValue));
             textarea.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    saveCell(cellId, textarea.value);
+                    saveCell(cellId, textarea.value, currentValue);
                 } else if (e.key === 'Escape') {
                     cancelEdit(cellId, currentValue);
+                } else if (e.ctrlKey && e.key === 'z') {
+                    e.preventDefault();
+                    undoLastEdit(cellId);
                 }
             });
             
@@ -1078,9 +1107,105 @@
             }
         }
 
-        // Função para testar copiar e colar
+        // Função para adicionar entrada ao histórico de edições
+        function addToEditHistory(cellId, oldValue, newValue) {
+            if (!appState.editHistory.has(cellId)) {
+                appState.editHistory.set(cellId, []);
+            }
+            
+            const history = appState.editHistory.get(cellId);
+            history.push({
+                oldValue: oldValue,
+                newValue: newValue,
+                timestamp: Date.now()
+            });
+            
+            // Manter apenas as últimas alterações
+            if (history.length > appState.maxHistorySize) {
+                history.shift();
+            }
+            
+            console.log(`📝 Histórico atualizado para ${cellId}:`, history.length, 'alterações');
+        }
+
+        // Função para desfazer a última alteração de uma célula
+        function undoLastEdit(cellId) {
+            if (!appState.editHistory.has(cellId)) {
+                console.log(`❌ Nenhum histórico para ${cellId}`);
+                return false;
+            }
+            
+            const history = appState.editHistory.get(cellId);
+            if (history.length === 0) {
+                console.log(`❌ Histórico vazio para ${cellId}`);
+                return false;
+            }
+            
+            const lastEdit = history.pop();
+            console.log(`↩️ Desfazendo alteração em ${cellId}:`, lastEdit.newValue, '→', lastEdit.oldValue);
+            
+            // Atualizar o valor da célula
+            const cell = document.getElementById(cellId);
+            if (cell) {
+                // Se a célula estiver em modo de edição, atualizar o textarea
+                if (cell.classList.contains('editing')) {
+                    const textarea = cell.querySelector('.excel-input');
+                    if (textarea) {
+                        textarea.value = lastEdit.oldValue;
+                        textarea.focus();
+                        textarea.select();
+                    }
+                } else {
+                    // Se não estiver em edição, atualizar o texto da célula
+                    cell.textContent = lastEdit.oldValue;
+                    cell.setAttribute('data-value', lastEdit.oldValue);
+                }
+                
+                // Atualizar o valor no appState
+                const [rowIndex, column] = cellId.split('-');
+                const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + parseInt(rowIndex);
+                if (appState.allResults[actualRowIndex]) {
+                    appState.allResults[actualRowIndex][column] = lastEdit.oldValue;
+                }
+                
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Função para salvar célula com histórico
+        function saveCell(cellId, newValue, oldValue) {
+            const cell = document.getElementById(cellId);
+            if (!cell) return;
+            
+            // Se o valor mudou, adicionar ao histórico
+            if (newValue !== oldValue) {
+                addToEditHistory(cellId, oldValue, newValue);
+                console.log(`💾 Salvando alteração em ${cellId}:`, oldValue, '→', newValue);
+            }
+            
+            // Remover modo de edição
+            cell.classList.remove('editing');
+            
+            // Atualizar conteúdo da célula
+            cell.textContent = newValue;
+            cell.setAttribute('data-value', newValue);
+            
+            // Atualizar valor no appState
+            const [rowIndex, column] = cellId.split('-');
+            const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + parseInt(rowIndex);
+            if (appState.allResults[actualRowIndex]) {
+                appState.allResults[actualRowIndex][column] = newValue;
+            }
+            
+            // Salvar no banco de dados (implementar conforme necessário)
+            // saveToDatabase(cellId, newValue);
+        }
+
+        // Função para testar copiar e colar e Ctrl+Z
         function testCopyPaste() {
-            console.log('🧪 Testando funcionalidade de copiar e colar...');
+            console.log('🧪 Testando funcionalidade de copiar/colar e Ctrl+Z...');
             
             // Testar em campos de filtro
             const filterInputs = ['pnSearch', 'descricaoSearch', 'ncmSearch'];
@@ -1103,11 +1228,19 @@
                     if (textarea) {
                         console.log(`   - Textarea configurado para copiar/colar`);
                         console.log(`   - user-select: ${getComputedStyle(textarea).userSelect}`);
+                        console.log(`   - Valor original: ${textarea.getAttribute('data-original-value')}`);
                     }
                 });
             }
             
+            // Testar histórico de edições
+            console.log(`📝 Histórico de edições: ${appState.editHistory.size} células com histórico`);
+            appState.editHistory.forEach((history, cellId) => {
+                console.log(`   - ${cellId}: ${history.length} alterações`);
+            });
+            
             console.log('🧪 Teste concluído. Verifique o console para detalhes.');
+            console.log('💡 Dica: Use Ctrl+Z em uma célula em edição para desfazer alterações!');
         }
 
         // Função para buscar part_number da peça através da linha da tabela
