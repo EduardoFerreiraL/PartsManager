@@ -1,0 +1,59 @@
+🚀 INSTRUÇÕES PARA EXECUTAR O PROJETO 🚀
+
+✅ AGORA TUDO FUNCIONA COM APENAS UM COMANDO - E DE FORMA MAIS ELEGANTE!
+
+🎯 COMO FUNCIONA:
+- O backend serve automaticamente o arquivo HTML do frontend
+- Você edita o HTML separadamente (mais fácil de manter)
+- Um comando só: `uvicorn main:app --reload`
+- Uma URL só: `http://127.0.0.1:8000`
+
+1. CONFIGURAR CREDENCIAIS DO SUPABASE:
+   - Crie um arquivo chamado ".env" nesta pasta (backend)
+   - Adicione suas credenciais:
+   
+   SUPABASE_URL="https://seu-projeto.supabase.co"
+   SUPABASE_KEY="sua-chave-de-servico-aqui"
+
+2. INSTALAR DEPENDÊNCIAS:
+   pip install -r requirements.txt
+
+3. EXECUTAR O PROJETO:
+   uvicorn main:app --reload
+
+4. ACESSAR NO NAVEGADOR:
+   http://127.0.0.1:8000
+
+🎉 VANTAGENS DESTA ABORDAGEM:
+- ✅ Frontend e backend separados (mais organizado)
+- ✅ HTML fácil de editar (sem mexer no Python)
+- ✅ Um comando só para executar tudo
+- ✅ Uma URL só para acessar tudo
+- ✅ Arquivos estáticos servidos automaticamente
+- ✅ Fallback se o HTML não existir
+
+🔧 FUNCIONALIDADES DISPONÍVEIS:
+- Status da API e conexão com Supabase
+- Estatísticas do banco de dados
+- Upload de arquivos Excel (.xlsx)
+- Busca de peças por código, nome ou categoria
+- Interface responsiva e moderna com Tailwind CSS
+
+📁 ESTRUTURA:
+- backend/main.py - API e servidor
+- frontend/index.html - Interface do usuário
+- frontend/script.js - Lógica JavaScript
+- backend/.env - Configurações do Supabase
+
+📱 COMPATIBILIDADE:
+- Desktop, tablet e mobile
+- Todos os navegadores modernos
+- Design responsivo automático
+
+🎯 PARA DESENVOLVEDORES:
+- Edite o HTML em frontend/index.html
+- Edite o JavaScript em frontend/script.js
+- O backend serve tudo automaticamente
+- Sem necessidade de recompilar ou reiniciar para mudanças no frontend
+
+🎉 SEU PROJETO ESTÁ PRONTO PARA USAR E DESENVOLVER!

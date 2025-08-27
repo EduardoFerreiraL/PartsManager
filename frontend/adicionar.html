@@ -1,0 +1,478 @@
+-
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Peças - Adicionar Itens</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8'
+                        },
+                        secondary: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            500: '#64748b',
+                            600: '#475569'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen text-gray-800 relative">
+    <!-- Imagem de fundo com filtro escuro -->
+    <div class="fixed inset-0 z-0">
+        <img src="imagens/fundoDb.jpg" alt="Fundo do banco de dados" class="w-full h-full object-cover" 
+             onerror="this.style.display='none'; this.nextElementSibling.style.background='linear-gradient(135deg, #1e3a8a, #3730a3, #581c87)'">
+        <div class="absolute inset-0 bg-black bg-opacity-60"></div>
+    </div>
+    
+    <!-- Conteúdo principal com z-index para ficar sobre o fundo -->
+    <div class="relative z-10">
+        <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header com Navegação -->
+        <header class="text-center mb-8">
+            <div class="flex items-center justify-between mb-6">
+                <button onclick="window.location.href='/'" class="bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-all duration-300 flex items-center gap-2">
+                    <i class="fas fa-arrow-left"></i>Voltar ao Menu
+                </button>
+                <h1 class="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
+                    <i class="fas fa-plus mr-3"></i>Adicionar Itens
+                </h1>
+                <div class="w-20"></div> <!-- Espaçador para centralizar o título -->
+            </div>
+            <p class="text-xl text-green-100 opacity-90">Upload de arquivos Excel para adicionar novas peças ao sistema</p>
+        </header>
+
+        <!-- Status da API -->
+        <div class="bg-white rounded-2xl p-6 mb-6 shadow-xl">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-3">
+                    <i class="fas fa-server text-primary-500"></i>Status da API
+                </h3>
+                <button id="checkStatusBtn" class="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg font-medium border border-gray-300 transition-all duration-300 hover:bg-gray-200 hover:shadow-md hover:-translate-y-0.5 inline-flex items-center gap-2 mt-4 md:mt-0">
+                    <i class="fas fa-sync-alt"></i>Verificar
+                </button>
+            </div>
+            <div id="apiStatus" class="flex items-center gap-4 text-lg">
+                <span class="w-3 h-3 rounded-full inline-block bg-red-500 shadow-lg shadow-red-500/50"></span>
+                <span>Verificando status da API...</span>
+            </div>
+        </div>
+
+        <!-- Download da Planilha Modelo -->
+        <div class="bg-white rounded-2xl p-6 mb-6 shadow-xl hover:shadow-2xl transition-all duration-300">
+            <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-3 mb-4 text-center justify-center">
+                <i class="fas fa-download text-blue-500"></i>Planilha Modelo
+            </h3>
+            
+            <div class="text-center">
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <i class="fas fa-file-excel text-3xl text-blue-500 mb-3"></i>
+                    <h4 class="text-base font-semibold text-blue-800 mb-2">Planilha Modelo para Preenchimento</h4>
+                    <p class="text-blue-600 mb-3 text-sm">Baixe a planilha modelo com a estrutura correta das colunas</p>
+                    
+                    <button onclick="downloadModelExcel()" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:from-blue-600 hover:to-blue-700 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2">
+                        <i class="fas fa-download"></i>Baixar Planilha Modelo
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload de Arquivo -->
+        <div class="bg-white rounded-2xl p-8 mb-6 shadow-xl hover:shadow-2xl transition-all duration-300">
+            <h3 class="text-2xl font-semibold text-gray-800 flex items-center gap-3 mb-8 text-center justify-center">
+                <i class="fas fa-upload text-green-500"></i>Upload de Arquivo Excel
+            </h3>
+            
+            <form id="uploadForm" class="space-y-8">
+                <!-- Área de Upload -->
+                <div class="relative">
+                    <input type="file" name="file" id="fileInput" accept=".xlsx,.xls" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    <label for="fileInput" class="flex flex-col items-center justify-center p-16 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer transition-all duration-300 hover:border-green-500 hover:bg-green-50 text-center group">
+                        <i class="fas fa-file-excel text-6xl text-green-500 mb-6 group-hover:scale-110 transition-transform duration-300"></i>
+                        <span class="text-xl text-gray-600 mb-2">Clique para selecionar ou arraste um arquivo Excel</span>
+                        <span class="text-sm text-gray-500">Formatos aceitos: .xlsx, .xls</span>
+                    </label>
+                </div>
+
+                <!-- Informações do Arquivo -->
+                <div id="fileInfo" class="hidden bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-file-excel text-green-600 text-xl"></i>
+                            <div>
+                                <p class="font-medium text-green-800" id="fileName">Nome do arquivo</p>
+                                <p class="text-sm text-green-600" id="fileSize">Tamanho do arquivo</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="clearFile()" class="text-green-600 hover:text-green-800">
+                            <i class="fas fa-times text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Botão de Envio -->
+                <div class="text-center">
+                    <button type="submit" id="submitBtn" class="bg-gradient-to-r from-green-500 to-green-600 text-white px-8 py-4 rounded-lg font-medium text-lg transition-all duration-300 hover:from-green-600 hover:to-green-700 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <i class="fas fa-upload"></i>Enviar Arquivo
+                    </button>
+                </div>
+            </form>
+
+            <!-- Mensagens -->
+            <div id="uploadMessage" class="mt-6"></div>
+        </div>
+
+        <!-- Instruções -->
+        <div class="bg-white rounded-2xl p-6 shadow-xl">
+            <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-3 mb-4">
+                <i class="fas fa-info-circle text-blue-500"></i>Instruções para Upload
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-gray-600">
+                <div>
+                    <h4 class="font-semibold text-gray-800 mb-2">📋 Formato do Arquivo:</h4>
+                    <ul class="space-y-1 text-sm">
+                        <li>• Arquivo Excel (.xlsx ou .xls)</li>
+                        <li>• Primeira linha deve conter os cabeçalhos</li>
+                        <li>• Colunas esperadas: part_number, description, ncm, etc.</li>
+                        <li>• Máximo de 10.000 linhas por upload</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold text-gray-800 mb-2">📊 Colunas da Tabela:</h4>
+                    <ul class="space-y-1 text-sm">
+                        <li>• part_number (Part Number)</li>
+                        <li>• chinese_description (Descrição Chinesa)</li>
+                        <li>• description (Descrição)</li>
+                        <li>• ncm (NCM)</li>
+                        <li>• date_of_creation (Data de Criação)</li>
+                        <li>• review_date (Data de Revisão)</li>
+                        <li>• process (Processo)</li>
+                        <li>• machine (Máquina)</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <h4 class="font-semibold text-yellow-800 mb-2">⚠️ Instruções Importantes:</h4>
+                <ul class="space-y-1 text-sm text-yellow-700">
+                    <li>• Verifique se o arquivo não está aberto</li>
+                    <li>• Certifique-se de que não há linhas vazias</li>
+                    <li>• Dados duplicados serão ignorados</li>
+                    <li>• O processo pode levar alguns minutos</li>
+                    <li>• As colunas do Excel devem corresponder aos nomes da tabela</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuração da API
+        const API_BASE_URL = '/api';
+
+        // Elementos do DOM
+        const elements = {
+            checkStatusBtn: document.getElementById('checkStatusBtn'),
+            apiStatus: document.getElementById('apiStatus'),
+            uploadForm: document.getElementById('uploadForm'),
+            fileInput: document.getElementById('fileInput'),
+            fileInfo: document.getElementById('fileInfo'),
+            fileName: document.getElementById('fileName'),
+            fileSize: document.getElementById('fileSize'),
+            submitBtn: document.getElementById('submitBtn'),
+            uploadMessage: document.getElementById('uploadMessage')
+        };
+
+        // Inicialização da aplicação
+        document.addEventListener('DOMContentLoaded', function() {
+            checkApiStatus();
+            setupEventListeners();
+        });
+
+        // Configuração dos event listeners
+        function setupEventListeners() {
+            elements.checkStatusBtn.addEventListener('click', checkApiStatus);
+            elements.uploadForm.addEventListener('submit', handleFileUpload);
+            elements.fileInput.addEventListener('change', handleFileSelect);
+        }
+
+        // Verificar status da API
+        async function checkApiStatus() {
+            try {
+                elements.checkStatusBtn.innerHTML = '<span class="inline-block w-5 h-5 border-2 border-gray-300 border-t-primary-500 rounded-full animate-spin"></span> Verificando...';
+                elements.checkStatusBtn.disabled = true;
+                
+                const response = await fetch(`${API_BASE_URL}/health`);
+                const data = await response.json();
+                
+                if (data.status === 'healthy') {
+                    updateApiStatus(true, 'API funcionando e conectada ao Supabase');
+                } else {
+                    updateApiStatus(false, data.message);
+                }
+            } catch (error) {
+                updateApiStatus(false, 'Erro ao conectar com a API');
+                console.error('Erro ao verificar status da API:', error);
+            } finally {
+                elements.checkStatusBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Verificar';
+                elements.checkStatusBtn.disabled = false;
+            }
+        }
+
+        // Manipular seleção de arquivo
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                elements.fileName.textContent = file.name;
+                elements.fileSize.textContent = formatFileSize(file.size);
+                elements.fileInfo.classList.remove('hidden');
+                elements.submitBtn.disabled = false;
+            }
+        }
+
+        // Limpar arquivo selecionado
+        function clearFile() {
+            elements.fileInput.value = '';
+            elements.fileInfo.classList.add('hidden');
+            elements.submitBtn.disabled = true;
+            elements.uploadMessage.innerHTML = '';
+        }
+
+        // Formatar tamanho do arquivo
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // Upload de arquivo
+        async function handleFileUpload(event) {
+            event.preventDefault();
+            
+            const file = elements.fileInput.files[0];
+            
+            if (!file) {
+                showMessage('Por favor, selecione um arquivo Excel.', 'error');
+                return;
+            }
+            
+            if (!file.name.match(/\.(xlsx|xls)$/i)) {
+                showMessage('Apenas arquivos Excel (.xlsx, .xls) são aceitos.', 'error');
+                return;
+            }
+            
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+                
+                showMessage('Enviando arquivo...', 'info');
+                elements.submitBtn.disabled = true;
+                elements.submitBtn.innerHTML = '<span class="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Enviando...';
+                
+                const response = await fetch(`${API_BASE_URL}/upload-excel`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    if (result.status === 'conflicts_only') {
+                        // Mostrar mensagem de conflitos e botão para download
+                        showConflictsMessage(result, result.conflicts_excel);
+                    } else {
+                        showMessage(result.message, 'success');
+                        clearFile();
+                    }
+                } else {
+                    showMessage(result.detail || 'Erro ao processar o arquivo.', 'error');
+                }
+            } catch (error) {
+                showMessage('Erro de conexão com o servidor.', 'error');
+                console.error('Erro no upload:', error);
+            } finally {
+                elements.submitBtn.disabled = false;
+                elements.submitBtn.innerHTML = '<i class="fas fa-upload"></i>Enviar Arquivo';
+            }
+        }
+
+        // Atualizar status da API na interface
+        function updateApiStatus(isOnline, message) {
+            const statusIndicator = elements.apiStatus.querySelector('span:first-child');
+            const statusText = elements.apiStatus.querySelector('span:last-child');
+            
+            if (isOnline) {
+                statusIndicator.className = 'w-3 h-3 rounded-full inline-block bg-green-500 shadow-lg shadow-green-500/50';
+                statusText.textContent = message;
+                statusText.className = 'text-green-600 font-medium';
+            } else {
+                statusIndicator.className = 'w-3 h-3 rounded-full inline-block bg-red-500 shadow-lg shadow-red-500/50';
+                statusText.textContent = message;
+                statusText.className = 'text-red-600 font-medium';
+            }
+        }
+
+        // Mostrar mensagens para o usuário
+        function showMessage(message, type = 'info') {
+            const messageElement = elements.uploadMessage;
+            
+            // Remover classes anteriores
+            messageElement.className = 'mt-6 p-4 rounded-lg font-medium relative';
+            
+            // Adicionar classes baseadas no tipo
+            if (type === 'success') {
+                messageElement.classList.add('bg-green-100', 'text-green-800', 'border', 'border-green-200');
+            } else if (type === 'error') {
+                messageElement.classList.add('bg-red-100', 'text-red-800', 'border', 'border-red-200');
+            } else {
+                messageElement.classList.add('bg-blue-100', 'text-blue-800', 'border', 'border-blue-200');
+            }
+            
+            messageElement.innerHTML = `
+                <button onclick="closeMessage()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700 transition-colors">
+                    <i class="fas fa-times text-lg"></i>
+                </button>
+                <div class="text-center">
+                    <p class="text-lg">${message}</p>
+                </div>
+            `;
+        }
+        
+        // Função para fechar mensagem
+        function closeMessage() {
+            const messageElement = elements.uploadMessage;
+            messageElement.className = 'mt-6';
+            messageElement.innerHTML = '';
+        }
+
+        // Mostrar mensagem de conflitos com opção de download
+        function showConflictsMessage(result, conflictsExcel) {
+            const messageElement = elements.uploadMessage;
+            
+            messageElement.className = 'mt-6 p-6 rounded-lg font-medium text-center';
+            messageElement.classList.add('bg-yellow-100', 'text-yellow-800', 'border', 'border-yellow-200');
+            
+            let html = `
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-exclamation-triangle text-2xl text-yellow-600"></i>
+                            <h4 class="text-lg font-semibold">Conflitos Encontrados</h4>
+                        </div>
+                        <button onclick="clearConflictsMessage()" class="text-yellow-600 hover:text-yellow-800 text-xl">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <p class="text-lg">${result.message}</p>
+                    <div class="bg-yellow-50 p-4 rounded-lg">
+                        <p class="text-sm text-yellow-700 mb-3">
+                            <strong>Resumo:</strong><br>
+                            • Total na planilha: ${result.total_original} itens<br>
+                            • Conflitos encontrados: ${result.conflicts_found} itens<br>
+                            • Itens inseridos: ${result.rows_inserted} itens
+                        </p>
+                    </div>
+            `;
+            
+            // Adicionar botão de download se houver planilha de conflitos
+            if (conflictsExcel && conflictsExcel.status === 'success') {
+                html += `
+                    <div class="pt-4">
+                        <button onclick="downloadConflictsExcel('${conflictsExcel.excel_base64}', '${conflictsExcel.filename}')" 
+                                class="bg-yellow-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-yellow-700 transition-all duration-300 inline-flex items-center gap-2">
+                            <i class="fas fa-download"></i>Baixar Planilha de Conflitos
+                        </button>
+                        <p class="text-sm text-yellow-600 mt-2">Esta planilha contém detalhes de todos os conflitos encontrados</p>
+                    </div>
+                `;
+            }
+            
+            html += '</div>';
+            messageElement.innerHTML = html;
+            
+            // NÃO limpar automaticamente - deixar o usuário fechar manualmente
+        }
+        
+        // Função para limpar mensagem de conflitos manualmente
+        function clearConflictsMessage() {
+            const messageElement = elements.uploadMessage;
+            messageElement.className = 'mt-6';
+            messageElement.innerHTML = '';
+        }
+        
+        // Download da planilha modelo
+        async function downloadModelExcel() {
+            try {
+                showMessage('Baixando planilha modelo...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/download-model`);
+                
+                if (response.ok) {
+                    // Criar blob do arquivo
+                    const blob = await response.blob();
+                    
+                    // Criar link de download
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = 'model.xlsx';
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    showMessage('Planilha modelo baixada com sucesso! Agora você pode preenchê-la com seus dados.', 'success');
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Erro ao baixar planilha modelo');
+                }
+            } catch (error) {
+                showMessage('Erro ao baixar planilha modelo: ' + error.message, 'error');
+                console.error('Erro no download da planilha modelo:', error);
+            }
+        }
+        
+        // Download da planilha de conflitos
+        function downloadConflictsExcel(base64Data, filename) {
+            try {
+                // Converter base64 para blob
+                const byteCharacters = atob(base64Data);
+                const byteNumbers = new Array(byteCharacters.length);
+                for (let i = 0; i < byteCharacters.length; i++) {
+                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                
+                // Criar link de download
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                showMessage('Planilha de conflitos baixada com sucesso!', 'success');
+            } catch (error) {
+                showMessage('Erro ao baixar planilha: ' + error.message, 'error');
+                console.error('Erro no download:', error);
+            }
+        }
+    </script>
+    </div> <!-- Fechamento da div do conteúdo principal -->
+</body>
+</html>
