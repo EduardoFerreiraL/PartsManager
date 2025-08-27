@@ -126,6 +126,9 @@
                 <button onclick="testCopyPaste()" class="bg-yellow-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-yellow-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Testar funcionalidade de copiar/colar, Ctrl+Z e ESC">
                     <i class="fas fa-clipboard-check"></i>Testar Copiar/Colar + Ctrl+Z + ESC
                 </button>
+                <button onclick="testEditFlow()" class="bg-blue-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-blue-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Testar fluxo completo de edição">
+                    <i class="fas fa-edit"></i>Testar Fluxo de Edição
+                </button>
 
             </div>
             
@@ -994,6 +997,15 @@
             const cell = document.getElementById(cellId);
             if (!cell) return;
             
+            // Obter o valor atual da célula (que pode ter sido salvo anteriormente)
+            const actualCurrentValue = cell.getAttribute('data-value') || cell.textContent || currentValue;
+            
+            console.log(`✏️ Editando célula ${cellId}:`, {
+                'valor passado': currentValue,
+                'valor atual da célula': actualCurrentValue,
+                'usando valor': actualCurrentValue
+            });
+            
             // Remover seleção de outras células
             clearCellSelection();
             
@@ -1002,12 +1014,12 @@
             
             // Criar textarea de edição para suportar múltiplas linhas
             const textarea = document.createElement('textarea');
-            textarea.value = currentValue;
+            textarea.value = actualCurrentValue; // Usar o valor atual da célula
             textarea.className = 'excel-input';
             textarea.rows = 1;
             
-            // Armazenar o valor original para o histórico
-            textarea.setAttribute('data-original-value', currentValue);
+            // Armazenar o valor atual como "original" para o histórico
+            textarea.setAttribute('data-original-value', actualCurrentValue);
             
             // Substituir conteúdo da célula
             cell.innerHTML = '';
@@ -1022,13 +1034,13 @@
             });
             
             // Eventos do textarea
-            textarea.addEventListener('blur', () => saveCell(cellId, textarea.value, currentValue));
+            textarea.addEventListener('blur', () => saveCell(cellId, textarea.value, actualCurrentValue));
             textarea.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    saveCell(cellId, textarea.value, currentValue);
+                    saveCell(cellId, textarea.value, actualCurrentValue);
                 } else if (e.key === 'Escape') {
-                    cancelEdit(cellId, currentValue);
+                    cancelEdit(cellId, actualCurrentValue);
                 } else if (e.ctrlKey && e.key === 'z') {
                     e.preventDefault();
                     undoLastEdit(cellId);
@@ -1197,19 +1209,93 @@
             // Remover modo de edição
             cell.classList.remove('editing');
             
-            // Atualizar conteúdo da célula
+            // Atualizar conteúdo da célula com o novo valor
             cell.textContent = newValue;
             cell.setAttribute('data-value', newValue);
             
-            // Atualizar valor no appState
-            const [rowIndex, column] = cellId.split('-');
-            const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + parseInt(rowIndex);
-            if (appState.allResults[actualRowIndex]) {
-                appState.allResults[actualRowIndex][column] = newValue;
+            // Atualizar o valor no appState para manter consistência
+            try {
+                const [rowIndex, column] = cellId.split('-');
+                const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + parseInt(rowIndex);
+                if (appState.allResults[actualRowIndex]) {
+                    appState.allResults[actualRowIndex][column] = newValue;
+                }
+            } catch (error) {
+                console.warn('Não foi possível atualizar appState ao salvar:', error);
             }
             
-            // Salvar no banco de dados (implementar conforme necessário)
-            // saveToDatabase(cellId, newValue);
+            // Mostrar mensagem de sucesso
+            showMessage('Alteração salva com sucesso!', 'success');
+            
+            console.log(`✅ Célula ${cellId} salva com sucesso. Novo valor:`, newValue);
+        }
+
+        // Função para testar o fluxo completo de edição
+        function testEditFlow() {
+            console.log('🧪 Testando fluxo completo de edição...');
+            
+            // Encontrar uma célula para testar
+            const testCell = document.querySelector('#excelTable td:not(.editing)');
+            if (!testCell) {
+                console.log('❌ Nenhuma célula disponível para teste');
+                return;
+            }
+            
+            const cellId = testCell.id;
+            const originalValue = testCell.getAttribute('data-value') || testCell.textContent;
+            
+            console.log(`📝 Testando célula ${cellId}:`);
+            console.log(`   - Valor original: "${originalValue}"`);
+            console.log(`   - data-value: "${testCell.getAttribute('data-value')}"`);
+            console.log(`   - textContent: "${testCell.textContent}"`);
+            
+            // Simular edição
+            console.log(`\n🔧 Simulando edição...`);
+            editCell(cellId, originalValue);
+            
+            // Aguardar um pouco e verificar
+            setTimeout(() => {
+                const editingCell = document.querySelector(`#${cellId}`);
+                if (editingCell && editingCell.classList.contains('editing')) {
+                    const textarea = editingCell.querySelector('.excel-input');
+                    if (textarea) {
+                        console.log(`✅ Célula em modo de edição:`);
+                        console.log(`   - Valor no textarea: "${textarea.value}"`);
+                        console.log(`   - Valor original armazenado: "${textarea.getAttribute('data-original-value')}"`);
+                        
+                        // Simular alteração
+                        textarea.value = 'VALOR TESTE ALTERADO';
+                        console.log(`   - Valor alterado para: "${textarea.value}"`);
+                        
+                        // Simular salvamento
+                        console.log(`\n💾 Simulando salvamento...`);
+                        saveCell(cellId, textarea.value, textarea.getAttribute('data-original-value'));
+                        
+                        // Verificar resultado
+                        setTimeout(() => {
+                            const savedCell = document.querySelector(`#${cellId}`);
+                            console.log(`\n📋 Resultado após salvamento:`);
+                            console.log(`   - Valor salvo: "${savedCell.textContent}"`);
+                            console.log(`   - data-value: "${savedCell.getAttribute('data-value')}"`);
+                            console.log(`   - Modo de edição: ${savedCell.classList.contains('editing') ? 'Sim' : 'Não'}`);
+                            
+                            // Testar nova edição
+                            console.log(`\n🔄 Testando nova edição...`);
+                            editCell(cellId, savedCell.textContent);
+                            
+                            setTimeout(() => {
+                                const newEditingCell = document.querySelector(`#${newEditingCell.id}`);
+                                if (newEditingCell && newEditingCell.classList.contains('editing')) {
+                                    const newTextarea = newEditingCell.querySelector('.excel-input');
+                                    console.log(`✅ Nova edição iniciada:`);
+                                    console.log(`   - Valor no textarea: "${newTextarea.value}"`);
+                                    console.log(`   - Valor original armazenado: "${newTextarea.getAttribute('data-original-value')}"`);
+                                }
+                            }, 100);
+                        }, 100);
+                    }
+                }
+            }, 100);
         }
 
         // Função para testar copiar e colar, Ctrl+Z e ESC
@@ -1241,6 +1327,21 @@
                         console.log(`   - Valor atual: ${textarea.value}`);
                     }
                 });
+            } else {
+                // Testar células normais para ver seus valores atuais
+                const normalCells = document.querySelectorAll('#excelTable td:not(.editing)');
+                if (normalCells.length > 0) {
+                    console.log(`📋 ${normalCells.length} célula(s) normais disponíveis`);
+                    console.log(`   - Primeiras 5 células:`);
+                    normalCells.forEach((cell, index) => {
+                        if (index < 5) {
+                            const cellId = cell.id;
+                            const dataValue = cell.getAttribute('data-value');
+                            const textContent = cell.textContent;
+                            console.log(`     ${cellId}: data-value="${dataValue}", text="${textContent}"`);
+                        }
+                    });
+                }
             }
             
             // Testar histórico de edições
