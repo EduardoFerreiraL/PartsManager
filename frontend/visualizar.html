@@ -123,8 +123,8 @@
                 <button id="exportBtn" class="bg-green-500 text-white px-8 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-green-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-3">
                     <i class="fas fa-download"></i>Exportar
                 </button>
-                <button onclick="testCopyPaste()" class="bg-yellow-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-yellow-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Testar funcionalidade de copiar/colar e Ctrl+Z">
-                    <i class="fas fa-clipboard-check"></i>Testar Copiar/Colar + Ctrl+Z
+                <button onclick="testCopyPaste()" class="bg-yellow-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-yellow-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Testar funcionalidade de copiar/colar, Ctrl+Z e ESC">
+                    <i class="fas fa-clipboard-check"></i>Testar Copiar/Colar + Ctrl+Z + ESC
                 </button>
 
             </div>
@@ -156,7 +156,8 @@
                     • Ctrl+C: Copia células selecionadas<br>
                     • Delete: Limpa células selecionadas<br>
                     • F2: Edita primeira célula selecionada<br>
-                    • <strong>Ctrl+Z: Desfaz última alteração na célula em edição</strong>
+                    • <strong>Ctrl+Z: Desfaz última alteração na célula em edição</strong><br>
+                    • <strong>ESC: Cancela edição e restaura valor original</strong>
                 </div>
             </div>
             
@@ -610,7 +611,7 @@
                 }
             });
             
-            // Listener global para Ctrl+Z
+            // Listener global para Ctrl+Z e ESC
             document.addEventListener('keydown', (e) => {
                 if (e.ctrlKey && e.key === 'z') {
                     e.preventDefault();
@@ -626,6 +627,14 @@
                         }
                     } else {
                         showMessage('Nenhuma célula em edição para desfazer.', 'info');
+                    }
+                } else if (e.key === 'Escape') {
+                    // ESC para cancelar edição
+                    const editingCell = document.querySelector('#excelTable td.editing');
+                    if (editingCell) {
+                        const cellId = editingCell.id;
+                        const originalValue = editingCell.getAttribute('data-value') || editingCell.textContent || '';
+                        cancelEdit(cellId, originalValue);
                     }
                 }
             });
@@ -1203,9 +1212,9 @@
             // saveToDatabase(cellId, newValue);
         }
 
-        // Função para testar copiar e colar e Ctrl+Z
+        // Função para testar copiar e colar, Ctrl+Z e ESC
         function testCopyPaste() {
-            console.log('🧪 Testando funcionalidade de copiar/colar e Ctrl+Z...');
+            console.log('🧪 Testando funcionalidade de copiar/colar, Ctrl+Z e ESC...');
             
             // Testar em campos de filtro
             const filterInputs = ['pnSearch', 'descricaoSearch', 'ncmSearch'];
@@ -1229,6 +1238,7 @@
                         console.log(`   - Textarea configurado para copiar/colar`);
                         console.log(`   - user-select: ${getComputedStyle(textarea).userSelect}`);
                         console.log(`   - Valor original: ${textarea.getAttribute('data-original-value')}`);
+                        console.log(`   - Valor atual: ${textarea.value}`);
                     }
                 });
             }
@@ -1240,7 +1250,10 @@
             });
             
             console.log('🧪 Teste concluído. Verifique o console para detalhes.');
-            console.log('💡 Dica: Use Ctrl+Z em uma célula em edição para desfazer alterações!');
+            console.log('💡 Dicas:');
+            console.log('   • Use Ctrl+Z em uma célula em edição para desfazer alterações');
+            console.log('   • Use ESC para cancelar edição e restaurar valor original');
+            console.log('   • Use Enter para salvar alterações');
         }
 
         // Função para buscar part_number da peça através da linha da tabela
@@ -1393,8 +1406,33 @@
             const cell = document.getElementById(cellId);
             if (!cell) return;
             
+            // Se não foi passado valor original, tentar recuperar do atributo da célula
+            if (originalValue === undefined || originalValue === null) {
+                originalValue = cell.getAttribute('data-value') || cell.textContent || '';
+            }
+            
+            console.log(`❌ Cancelando edição em ${cellId}, restaurando valor original:`, originalValue);
+            
+            // Remover modo de edição
             cell.classList.remove('editing');
+            
+            // Restaurar o valor original
             cell.textContent = originalValue;
+            cell.setAttribute('data-value', originalValue);
+            
+            // Atualizar o valor no appState para manter consistência
+            try {
+                const [rowIndex, column] = cellId.split('-');
+                const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + parseInt(rowIndex);
+                if (appState.allResults[actualRowIndex]) {
+                    appState.allResults[actualRowIndex][column] = originalValue;
+                }
+            } catch (error) {
+                console.warn('Não foi possível atualizar appState ao cancelar edição:', error);
+            }
+            
+            // Mostrar mensagem de cancelamento
+            showMessage('Edição cancelada - valor original restaurado', 'info');
         }
         
         // Função para selecionar célula
