@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -129,6 +129,12 @@
                 <button onclick="testEditFlow()" class="bg-blue-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-blue-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Testar fluxo completo de edição">
                     <i class="fas fa-edit"></i>Testar Fluxo de Edição
                 </button>
+                <button onclick="showHistoryInfo()" class="bg-purple-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-purple-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Mostrar informações do histórico de edições">
+                    <i class="fas fa-history"></i>Info do Histórico
+                </button>
+                <button onclick="clearEditHistory()" class="bg-red-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-red-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Limpar todo o histórico de edições">
+                    <i class="fas fa-trash"></i>Limpar Histórico
+                </button>
 
             </div>
             
@@ -159,8 +165,9 @@
                     • Ctrl+C: Copia células selecionadas<br>
                     • Delete: Limpa células selecionadas<br>
                     • F2: Edita primeira célula selecionada<br>
-                    • <strong>Ctrl+Z: Desfaz última alteração na célula em edição</strong><br>
-                    • <strong>ESC: Cancela edição e restaura valor original</strong>
+                    • <strong>Ctrl+Z: Desfaz última alteração (na célula em edição ou globalmente)</strong><br>
+                    • <strong>ESC: Cancela edição e restaura valor original</strong><br>
+                    • <strong>Histórico: Mantém até 10 alterações por célula e 50 globalmente</strong>
                 </div>
             </div>
             
@@ -544,7 +551,9 @@
             currentResults: [],
             allResults: [],
             editHistory: new Map(), // Histórico de edições por célula
-            maxHistorySize: 10 // Máximo de alterações por célula
+            maxHistorySize: 10, // Máximo de alterações por célula
+            globalEditHistory: [], // Histórico global de todas as alterações
+            maxGlobalHistorySize: 50 // Máximo de alterações globais
         };
 
         // Elementos do DOM
@@ -629,7 +638,12 @@
                             showMessage('Nada para desfazer nesta célula.', 'info');
                         }
                     } else {
-                        showMessage('Nenhuma célula em edição para desfazer.', 'info');
+                        // Se não há célula em edição, desfazer a última alteração global
+                        if (undoLastGlobalEdit()) {
+                            showMessage('Última alteração desfeita com sucesso!', 'success');
+                        } else {
+                            showMessage('Nada para desfazer.', 'info');
+                        }
                     }
                 } else if (e.key === 'Escape') {
                     // ESC para cancelar edição
@@ -1135,18 +1149,36 @@
             }
             
             const history = appState.editHistory.get(cellId);
-            history.push({
+            const editEntry = {
                 oldValue: oldValue,
                 newValue: newValue,
                 timestamp: Date.now()
-            });
+            };
+            
+            history.push(editEntry);
             
             // Manter apenas as últimas alterações
             if (history.length > appState.maxHistorySize) {
                 history.shift();
             }
             
-            console.log(`📝 Histórico atualizado para ${cellId}:`, history.length, 'alterações');
+            // Adicionar ao histórico global
+            appState.globalEditHistory.push({
+                cellId: cellId,
+                ...editEntry
+            });
+            
+            // Manter apenas as últimas alterações globais
+            if (appState.globalEditHistory.length > appState.maxGlobalHistorySize) {
+                appState.globalEditHistory.shift();
+            }
+            
+            console.log(`📝 Histórico atualizado para ${cellId}:`, {
+                'valor antigo': oldValue,
+                'valor novo': newValue,
+                'histórico da célula': history.length,
+                'histórico global': appState.globalEditHistory.length
+            });
         }
 
         // Função para desfazer a última alteração de uma célula
@@ -1175,6 +1207,9 @@
                         textarea.value = lastEdit.oldValue;
                         textarea.focus();
                         textarea.select();
+                        
+                        // Atualizar o valor original armazenado no textarea
+                        textarea.setAttribute('data-original-value', lastEdit.oldValue);
                     }
                 } else {
                     // Se não estiver em edição, atualizar o texto da célula
@@ -1183,10 +1218,77 @@
                 }
                 
                 // Atualizar o valor no appState
-                const [rowIndex, column] = cellId.split('-');
-                const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + parseInt(rowIndex);
-                if (appState.allResults[actualRowIndex]) {
-                    appState.allResults[actualRowIndex][column] = lastEdit.oldValue;
+                try {
+                    const rowIndex = parseInt(cell.getAttribute('data-row'));
+                    const column = cell.getAttribute('data-column');
+                    const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                    
+                    if (appState.allResults[actualRowIndex] && column) {
+                        appState.allResults[actualRowIndex][column] = lastEdit.oldValue;
+                        console.log(`✅ AppState atualizado: linha ${actualRowIndex}, coluna ${column} = ${lastEdit.oldValue}`);
+                    }
+                } catch (error) {
+                    console.warn('Erro ao atualizar appState:', error);
+                }
+                
+                return true;
+            }
+            
+            return false;
+        }
+
+        // Função para desfazer a última alteração global (Ctrl+Z global)
+        function undoLastGlobalEdit() {
+            if (appState.globalEditHistory.length === 0) {
+                console.log(`❌ Nenhum histórico global disponível`);
+                return false;
+            }
+            
+            const lastGlobalEdit = appState.globalEditHistory.pop();
+            console.log(`🌍 Desfazendo alteração global:`, lastGlobalEdit);
+            
+            // Remover também do histórico específico da célula
+            if (appState.editHistory.has(lastGlobalEdit.cellId)) {
+                const cellHistory = appState.editHistory.get(lastGlobalEdit.cellId);
+                const index = cellHistory.findIndex(edit => 
+                    edit.timestamp === lastGlobalEdit.timestamp &&
+                    edit.oldValue === lastGlobalEdit.oldValue &&
+                    edit.newValue === lastGlobalEdit.newValue
+                );
+                
+                if (index !== -1) {
+                    cellHistory.splice(index, 1);
+                    console.log(`✅ Removido do histórico da célula ${lastGlobalEdit.cellId}`);
+                }
+            }
+            
+            // Aplicar a alteração desfeita
+            const cell = document.getElementById(lastGlobalEdit.cellId);
+            if (cell) {
+                if (cell.classList.contains('editing')) {
+                    const textarea = cell.querySelector('.excel-input');
+                    if (textarea) {
+                        textarea.value = lastGlobalEdit.oldValue;
+                        textarea.setAttribute('data-original-value', lastGlobalEdit.oldValue);
+                        textarea.focus();
+                        textarea.select();
+                    }
+                } else {
+                    cell.textContent = lastGlobalEdit.oldValue;
+                    cell.setAttribute('data-value', lastGlobalEdit.oldValue);
+                }
+                
+                // Atualizar appState
+                try {
+                    const rowIndex = parseInt(cell.getAttribute('data-row'));
+                    const column = cell.getAttribute('data-column');
+                    const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                    
+                    if (appState.allResults[actualRowIndex] && column) {
+                        appState.allResults[actualRowIndex][column] = lastGlobalEdit.oldValue;
+                    }
+                } catch (error) {
+                    console.warn('Erro ao atualizar appState:', error);
                 }
                 
                 return true;
@@ -1199,6 +1301,11 @@
         function saveCell(cellId, newValue, oldValue) {
             const cell = document.getElementById(cellId);
             if (!cell) return;
+            
+            // Se não foi passado valor antigo, tentar recuperar
+            if (oldValue === undefined || oldValue === null) {
+                oldValue = cell.getAttribute('data-value') || cell.textContent || '';
+            }
             
             // Se o valor mudou, adicionar ao histórico
             if (newValue !== oldValue) {
@@ -1215,10 +1322,13 @@
             
             // Atualizar o valor no appState para manter consistência
             try {
-                const [rowIndex, column] = cellId.split('-');
-                const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + parseInt(rowIndex);
-                if (appState.allResults[actualRowIndex]) {
+                const rowIndex = parseInt(cell.getAttribute('data-row'));
+                const column = cell.getAttribute('data-column');
+                const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                
+                if (appState.allResults[actualRowIndex] && column) {
                     appState.allResults[actualRowIndex][column] = newValue;
+                    console.log(`✅ AppState atualizado: linha ${actualRowIndex}, coluna ${column} = ${newValue}`);
                 }
             } catch (error) {
                 console.warn('Não foi possível atualizar appState ao salvar:', error);
@@ -1228,278 +1338,6 @@
             showMessage('Alteração salva com sucesso!', 'success');
             
             console.log(`✅ Célula ${cellId} salva com sucesso. Novo valor:`, newValue);
-        }
-
-        // Função para testar o fluxo completo de edição
-        function testEditFlow() {
-            console.log('🧪 Testando fluxo completo de edição...');
-            
-            // Encontrar uma célula para testar
-            const testCell = document.querySelector('#excelTable td:not(.editing)');
-            if (!testCell) {
-                console.log('❌ Nenhuma célula disponível para teste');
-                return;
-            }
-            
-            const cellId = testCell.id;
-            const originalValue = testCell.getAttribute('data-value') || testCell.textContent;
-            
-            console.log(`📝 Testando célula ${cellId}:`);
-            console.log(`   - Valor original: "${originalValue}"`);
-            console.log(`   - data-value: "${testCell.getAttribute('data-value')}"`);
-            console.log(`   - textContent: "${testCell.textContent}"`);
-            
-            // Simular edição
-            console.log(`\n🔧 Simulando edição...`);
-            editCell(cellId, originalValue);
-            
-            // Aguardar um pouco e verificar
-            setTimeout(() => {
-                const editingCell = document.querySelector(`#${cellId}`);
-                if (editingCell && editingCell.classList.contains('editing')) {
-                    const textarea = editingCell.querySelector('.excel-input');
-                    if (textarea) {
-                        console.log(`✅ Célula em modo de edição:`);
-                        console.log(`   - Valor no textarea: "${textarea.value}"`);
-                        console.log(`   - Valor original armazenado: "${textarea.getAttribute('data-original-value')}"`);
-                        
-                        // Simular alteração
-                        textarea.value = 'VALOR TESTE ALTERADO';
-                        console.log(`   - Valor alterado para: "${textarea.value}"`);
-                        
-                        // Simular salvamento
-                        console.log(`\n💾 Simulando salvamento...`);
-                        saveCell(cellId, textarea.value, textarea.getAttribute('data-original-value'));
-                        
-                        // Verificar resultado
-                        setTimeout(() => {
-                            const savedCell = document.querySelector(`#${cellId}`);
-                            console.log(`\n📋 Resultado após salvamento:`);
-                            console.log(`   - Valor salvo: "${savedCell.textContent}"`);
-                            console.log(`   - data-value: "${savedCell.getAttribute('data-value')}"`);
-                            console.log(`   - Modo de edição: ${savedCell.classList.contains('editing') ? 'Sim' : 'Não'}`);
-                            
-                            // Testar nova edição
-                            console.log(`\n🔄 Testando nova edição...`);
-                            editCell(cellId, savedCell.textContent);
-                            
-                            setTimeout(() => {
-                                const newEditingCell = document.querySelector(`#${newEditingCell.id}`);
-                                if (newEditingCell && newEditingCell.classList.contains('editing')) {
-                                    const newTextarea = newEditingCell.querySelector('.excel-input');
-                                    console.log(`✅ Nova edição iniciada:`);
-                                    console.log(`   - Valor no textarea: "${newTextarea.value}"`);
-                                    console.log(`   - Valor original armazenado: "${newTextarea.getAttribute('data-original-value')}"`);
-                                }
-                            }, 100);
-                        }, 100);
-                    }
-                }
-            }, 100);
-        }
-
-        // Função para testar copiar e colar, Ctrl+Z e ESC
-        function testCopyPaste() {
-            console.log('🧪 Testando funcionalidade de copiar/colar, Ctrl+Z e ESC...');
-            
-            // Testar em campos de filtro
-            const filterInputs = ['pnSearch', 'descricaoSearch', 'ncmSearch'];
-            filterInputs.forEach(inputId => {
-                const input = document.getElementById(inputId);
-                if (input) {
-                    console.log(`✅ Campo ${inputId} configurado para copiar/colar`);
-                    console.log(`   - user-select: ${getComputedStyle(input).userSelect}`);
-                    console.log(`   - readOnly: ${input.readOnly}`);
-                    console.log(`   - disabled: ${input.disabled}`);
-                }
-            });
-            
-            // Testar em célula de edição (se houver)
-            const editingCells = document.querySelectorAll('#excelTable td.editing');
-            if (editingCells.length > 0) {
-                console.log(`✅ ${editingCells.length} célula(s) em modo de edição`);
-                editingCells.forEach(cell => {
-                    const textarea = cell.querySelector('.excel-input');
-                    if (textarea) {
-                        console.log(`   - Textarea configurado para copiar/colar`);
-                        console.log(`   - user-select: ${getComputedStyle(textarea).userSelect}`);
-                        console.log(`   - Valor original: ${textarea.getAttribute('data-original-value')}`);
-                        console.log(`   - Valor atual: ${textarea.value}`);
-                    }
-                });
-            } else {
-                // Testar células normais para ver seus valores atuais
-                const normalCells = document.querySelectorAll('#excelTable td:not(.editing)');
-                if (normalCells.length > 0) {
-                    console.log(`📋 ${normalCells.length} célula(s) normais disponíveis`);
-                    console.log(`   - Primeiras 5 células:`);
-                    normalCells.forEach((cell, index) => {
-                        if (index < 5) {
-                            const cellId = cell.id;
-                            const dataValue = cell.getAttribute('data-value');
-                            const textContent = cell.textContent;
-                            console.log(`     ${cellId}: data-value="${dataValue}", text="${textContent}"`);
-                        }
-                    });
-                }
-            }
-            
-            // Testar histórico de edições
-            console.log(`📝 Histórico de edições: ${appState.editHistory.size} células com histórico`);
-            appState.editHistory.forEach((history, cellId) => {
-                console.log(`   - ${cellId}: ${history.length} alterações`);
-            });
-            
-            console.log('🧪 Teste concluído. Verifique o console para detalhes.');
-            console.log('💡 Dicas:');
-            console.log('   • Use Ctrl+Z em uma célula em edição para desfazer alterações');
-            console.log('   • Use ESC para cancelar edição e restaurar valor original');
-            console.log('   • Use Enter para salvar alterações');
-        }
-
-        // Função para buscar part_number da peça através da linha da tabela
-        function getPecaPartNumberFromRow(cell) {
-            // Primeiro, tentar pegar diretamente do atributo da célula
-            let partNumber = cell.getAttribute('data-part-number');
-            
-            // Se não encontrou, buscar na linha da tabela
-            if (!partNumber || partNumber === 'undefined') {
-                const row = cell.closest('tr');
-                if (row) {
-                    // Buscar qualquer célula da linha que tenha o part_number
-                    const cellsInRow = row.querySelectorAll('td[data-part-number]');
-                    for (let cellInRow of cellsInRow) {
-                        const pn = cellInRow.getAttribute('data-part-number');
-                        if (pn && pn !== 'undefined') {
-                            partNumber = pn;
-                            break;
-                        }
-                    }
-                }
-            }
-            
-            // Se ainda não encontrou, buscar através do índice da linha
-            if (!partNumber || partNumber === 'undefined') {
-                const rowIndex = parseInt(cell.getAttribute('data-row'));
-                const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
-                
-                if (appState.allResults[actualRowIndex] && appState.allResults[actualRowIndex].part_number) {
-                    partNumber = appState.allResults[actualRowIndex].part_number;
-                    // Atualizar o atributo da célula para futuras referências
-                    cell.setAttribute('data-part-number', partNumber);
-                }
-            }
-            
-            return partNumber;
-        }
-
-        // Função para salvar célula
-        async function saveCell(cellId, newValue) {
-            const cell = document.getElementById(cellId);
-            if (!cell) return;
-            
-            const originalValue = cell.getAttribute('data-value');
-            
-            // Se o valor não mudou, não fazer nada
-            if (newValue === originalValue) {
-                cell.classList.remove('editing');
-                return;
-            }
-            
-            // Mostrar indicador de salvamento
-            cell.classList.add('saving');
-            cell.innerHTML = '<i class="fas fa-spinner fa-spin text-blue-500"></i>';
-            
-            try {
-                // Obter informações da célula
-                const column = cell.getAttribute('data-column');
-                
-                // Buscar part_number da peça usando a nova função robusta
-                const partNumber = getPecaPartNumberFromRow(cell);
-                
-                if (!partNumber || partNumber === 'undefined') {
-                    throw new Error('Part Number da peça não encontrado. Verifique se a tabela foi carregada corretamente.');
-                }
-                
-                // Preparar dados para atualização
-                const updateData = {};
-                updateData[column] = newValue;
-                
-                // Sempre incluir a data de revisão atual quando qualquer campo for modificado
-                const now = new Date();
-                const reviewDate = now.toISOString().split('T')[0]; // Formato YYYY-MM-DD
-                updateData['review_date'] = reviewDate;
-                
-                console.log('Salvando célula:', { 
-                    partNumber, 
-                    column, 
-                    newValue, 
-                    updateData,
-                    cellId,
-                    rowIndex: cell.getAttribute('data-row'),
-                    reviewDate: reviewDate
-                });
-                
-                // Atualizar no banco de dados usando part_number
-                const response = await fetch(`${API_BASE_URL}/pecas/part_number/${partNumber}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(updateData)
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || 'Erro ao salvar');
-                }
-                
-                const result = await response.json();
-                
-                if (result.status === 'success') {
-                    // Atualizar célula com sucesso
-                    cell.classList.remove('saving');
-                    cell.classList.remove('editing');
-                    cell.textContent = newValue;
-                    cell.setAttribute('data-value', newValue);
-                    
-                    // Atualizar dados na memória
-                    const rowIndex = parseInt(cell.getAttribute('data-row'));
-                    const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
-                    if (appState.allResults[actualRowIndex]) {
-                        appState.allResults[actualRowIndex][column] = newValue;
-                        // Atualizar também a review_date nos dados em memória
-                        appState.allResults[actualRowIndex]['review_date'] = reviewDate;
-                    }
-                    
-                    // Atualizar visualmente a célula review_date na tabela
-                    updateReviewDateCell(rowIndex, reviewDate);
-                    
-                    // Mostrar confirmação visual temporária
-                    cell.classList.add('saved');
-                    setTimeout(() => {
-                        cell.classList.remove('saved');
-                    }, 2000);
-                    
-                    // Mostrar notificação de sucesso
-                    showCopyNotification('Célula salva com sucesso! Review date atualizado automaticamente.', 'success');
-                    
-                } else {
-                    throw new Error(result.message || 'Erro ao salvar');
-                }
-                
-            } catch (error) {
-                console.error('Erro ao salvar célula:', error);
-                
-                // Restaurar valor original em caso de erro
-                cell.classList.remove('saving');
-                cell.classList.remove('editing');
-                cell.textContent = originalValue;
-                cell.setAttribute('data-value', originalValue);
-                
-                // Mostrar erro
-                showCopyNotification(`Erro ao salvar: ${error.message}`, 'error');
-            }
         }
         
         // Função para cancelar edição
@@ -1523,10 +1361,13 @@
             
             // Atualizar o valor no appState para manter consistência
             try {
-                const [rowIndex, column] = cellId.split('-');
-                const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + parseInt(rowIndex);
-                if (appState.allResults[actualRowIndex]) {
+                const rowIndex = parseInt(cell.getAttribute('data-row'));
+                const column = cell.getAttribute('data-column');
+                const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                
+                if (appState.allResults[actualRowIndex] && column) {
                     appState.allResults[actualRowIndex][column] = originalValue;
+                    console.log(`✅ AppState atualizado ao cancelar: linha ${actualRowIndex}, coluna ${column} = ${originalValue}`);
                 }
             } catch (error) {
                 console.warn('Não foi possível atualizar appState ao cancelar edição:', error);
@@ -1746,6 +1587,311 @@
                     }
                 }, 5000);
             }
+        }
+
+        // Função para buscar part_number da peça através da linha da tabela
+        function getPecaPartNumberFromRow(cell) {
+            // Primeiro, tentar pegar diretamente do atributo da célula
+            let partNumber = cell.getAttribute('data-part-number');
+            
+            // Se não encontrou, buscar na linha da tabela
+            if (!partNumber || partNumber === 'undefined') {
+                const row = cell.closest('tr');
+                if (row) {
+                    // Buscar qualquer célula da linha que tenha o part_number
+                    const cellsInRow = row.querySelectorAll('td[data-part-number]');
+                    for (let cellInRow of cellsInRow) {
+                        const pn = cellInRow.getAttribute('data-part-number');
+                        if (pn && pn !== 'undefined') {
+                            partNumber = pn;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Se ainda não encontrou, buscar através do índice da linha
+            if (!partNumber || partNumber === 'undefined') {
+                const rowIndex = parseInt(cell.getAttribute('data-row'));
+                const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                
+                if (appState.allResults[actualRowIndex] && appState.allResults[actualRowIndex].part_number) {
+                    partNumber = appState.allResults[actualRowIndex].part_number;
+                    // Atualizar o atributo da célula para futuras referências
+                    cell.setAttribute('data-part-number', partNumber);
+                }
+            }
+            
+            return partNumber;
+        }
+
+        // Função para salvar célula no banco de dados
+        async function saveCellToDatabase(cellId, newValue) {
+            const cell = document.getElementById(cellId);
+            if (!cell) return;
+            
+            const originalValue = cell.getAttribute('data-value');
+            
+            // Se o valor não mudou, não fazer nada
+            if (newValue === originalValue) {
+                cell.classList.remove('editing');
+                return;
+            }
+            
+            // Mostrar indicador de salvamento
+            cell.classList.add('saving');
+            cell.innerHTML = '<i class="fas fa-spinner fa-spin text-blue-500"></i>';
+            
+            try {
+                // Obter informações da célula
+                const column = cell.getAttribute('data-column');
+                
+                // Buscar part_number da peça usando a nova função robusta
+                const partNumber = getPecaPartNumberFromRow(cell);
+                
+                if (!partNumber || partNumber === 'undefined') {
+                    throw new Error('Part Number da peça não encontrado. Verifique se a tabela foi carregada corretamente.');
+                }
+                
+                // Preparar dados para atualização
+                const updateData = {};
+                updateData[column] = newValue;
+                
+                // Sempre incluir a data de revisão atual quando qualquer campo for modificado
+                const now = new Date();
+                const reviewDate = now.toISOString().split('T')[0]; // Formato YYYY-MM-DD
+                updateData['review_date'] = reviewDate;
+                
+                console.log('Salvando célula no banco:', { 
+                    partNumber, 
+                    column, 
+                    newValue, 
+                    updateData,
+                    cellId,
+                    rowIndex: cell.getAttribute('data-row'),
+                    reviewDate: reviewDate
+                });
+                
+                // Atualizar no banco de dados usando part_number
+                const response = await fetch(`${API_BASE_URL}/pecas/part_number/${partNumber}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updateData)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Erro ao salvar');
+                }
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    // Atualizar célula com sucesso
+                    cell.classList.remove('saving');
+                    cell.classList.remove('editing');
+                    cell.textContent = newValue;
+                    cell.setAttribute('data-value', newValue);
+                    
+                    // Atualizar dados na memória
+                    const rowIndex = parseInt(cell.getAttribute('data-row'));
+                    const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                    if (appState.allResults[actualRowIndex]) {
+                        appState.allResults[actualRowIndex][column] = newValue;
+                        // Atualizar também a review_date nos dados em memória
+                        appState.allResults[actualRowIndex]['review_date'] = reviewDate;
+                    }
+                    
+                    // Atualizar visualmente a célula review_date na tabela
+                    updateReviewDateCell(rowIndex, reviewDate);
+                    
+                    // Mostrar confirmação visual temporária
+                    cell.classList.add('saved');
+                    setTimeout(() => {
+                        cell.classList.remove('saved');
+                    }, 2000);
+                    
+                    // Mostrar notificação de sucesso
+                    showCopyNotification('Célula salva com sucesso! Review date atualizado automaticamente.', 'success');
+                    
+                } else {
+                    throw new Error(result.message || 'Erro ao salvar');
+                }
+                
+            } catch (error) {
+                console.error('Erro ao salvar célula:', error);
+                
+                // Restaurar valor original em caso de erro
+                cell.classList.remove('saving');
+                cell.classList.remove('editing');
+                cell.textContent = originalValue;
+                cell.setAttribute('data-value', originalValue);
+                
+                // Mostrar erro
+                showCopyNotification(`Erro ao salvar: ${error.message}`, 'error');
+            }
+        }
+
+        // Função para testar o fluxo completo de edição
+        function testEditFlow() {
+            console.log('🧪 Testando fluxo completo de edição...');
+            
+            // Encontrar uma célula para testar
+            const testCell = document.querySelector('#excelTable td:not(.editing)');
+            if (!testCell) {
+                console.log('❌ Nenhuma célula disponível para teste');
+                return;
+            }
+            
+            const cellId = testCell.id;
+            const originalValue = testCell.getAttribute('data-value') || testCell.textContent;
+            
+            console.log(`📝 Testando célula ${cellId}:`);
+            console.log(`   - Valor original: "${originalValue}"`);
+            console.log(`   - data-value: "${testCell.getAttribute('data-value')}"`);
+            console.log(`   - textContent: "${testCell.textContent}"`);
+            
+            // Simular edição
+            console.log(`\n🔧 Simulando edição...`);
+            editCell(cellId, originalValue);
+            
+            // Aguardar um pouco e verificar
+            setTimeout(() => {
+                const editingCell = document.querySelector(`#${cellId}`);
+                if (editingCell && editingCell.classList.contains('editing')) {
+                    const textarea = editingCell.querySelector('.excel-input');
+                    if (textarea) {
+                        console.log(`✅ Célula em modo de edição:`);
+                        console.log(`   - Valor no textarea: "${textarea.value}"`);
+                        console.log(`   - Valor original armazenado: "${textarea.getAttribute('data-original-value')}"`);
+                        
+                        // Simular alteração
+                        textarea.value = 'VALOR TESTE ALTERADO';
+                        console.log(`   - Valor alterado para: "${textarea.value}"`);
+                        
+                        // Simular salvamento
+                        console.log(`\n💾 Simulando salvamento...`);
+                        saveCell(cellId, textarea.value, textarea.getAttribute('data-original-value'));
+                        
+                        // Verificar resultado
+                        setTimeout(() => {
+                            const savedCell = document.querySelector(`#${cellId}`);
+                            console.log(`\n📋 Resultado após salvamento:`);
+                            console.log(`   - Valor salvo: "${savedCell.textContent}"`);
+                            console.log(`   - data-value: "${savedCell.getAttribute('data-value')}"`);
+                            console.log(`   - Modo de edição: ${savedCell.classList.contains('editing') ? 'Sim' : 'Não'}`);
+                            
+                            // Testar nova edição
+                            console.log(`\n🔄 Testando nova edição...`);
+                            editCell(cellId, savedCell.textContent);
+                            
+                            setTimeout(() => {
+                                const newEditingCell = document.querySelector(`#${cellId}`);
+                                if (newEditingCell && newEditingCell.classList.contains('editing')) {
+                                    const newTextarea = newEditingCell.querySelector('.excel-input');
+                                    console.log(`✅ Nova edição iniciada:`);
+                                    console.log(`   - Valor no textarea: "${newTextarea.value}"`);
+                                    console.log(`   - Valor original armazenado: "${newTextarea.getAttribute('data-original-value')}"`);
+                                }
+                            }, 100);
+                        }, 100);
+                    }
+                }
+            }, 100);
+        }
+
+        // Função para limpar histórico de edições
+        function clearEditHistory() {
+            appState.editHistory.clear();
+            appState.globalEditHistory = [];
+            console.log('🧹 Histórico de edições limpo');
+            showMessage('Histórico de edições limpo com sucesso!', 'success');
+        }
+
+        // Função para mostrar informações do histórico
+        function showHistoryInfo() {
+            const cellHistoryCount = appState.editHistory.size;
+            const globalHistoryCount = appState.globalEditHistory.length;
+            
+            console.log('📊 Informações do Histórico:');
+            console.log(`   - Células com histórico: ${cellHistoryCount}`);
+            console.log(`   - Total de alterações globais: ${globalHistoryCount}`);
+            
+            if (globalHistoryCount > 0) {
+                const lastEdit = appState.globalEditHistory[globalHistoryCount - 1];
+                console.log(`   - Última alteração: ${lastEdit.cellId} (${lastEdit.oldValue} → ${lastEdit.newValue})`);
+            }
+            
+            showMessage(`Histórico: ${cellHistoryCount} células, ${globalHistoryCount} alterações globais`, 'info');
+        }
+
+        // Função para testar copiar e colar, Ctrl+Z e ESC
+        function testCopyPaste() {
+            console.log('🧪 Testando funcionalidade de copiar/colar, Ctrl+Z e ESC...');
+            
+            // Testar em campos de filtro
+            const filterInputs = ['pnSearch', 'descricaoSearch', 'ncmSearch'];
+            filterInputs.forEach(inputId => {
+                const input = document.getElementById(inputId);
+                if (input) {
+                    console.log(`✅ Campo ${inputId} configurado para copiar/colar`);
+                    console.log(`   - user-select: ${getComputedStyle(input).userSelect}`);
+                    console.log(`   - readOnly: ${input.readOnly}`);
+                    console.log(`   - disabled: ${input.disabled}`);
+                }
+            });
+            
+            // Testar em célula de edição (se houver)
+            const editingCells = document.querySelectorAll('#excelTable td.editing');
+            if (editingCells.length > 0) {
+                console.log(`✅ ${editingCells.length} célula(s) em modo de edição`);
+                editingCells.forEach(cell => {
+                    const textarea = cell.querySelector('.excel-input');
+                    if (textarea) {
+                        console.log(`   - Textarea configurado para copiar/colar`);
+                        console.log(`   - user-select: ${getComputedStyle(textarea).userSelect}`);
+                        console.log(`   - Valor original: ${textarea.getAttribute('data-original-value')}`);
+                        console.log(`   - Valor atual: ${textarea.value}`);
+                    }
+                });
+            } else {
+                // Testar células normais para ver seus valores atuais
+                const normalCells = document.querySelectorAll('#excelTable td:not(.editing)');
+                if (normalCells.length > 0) {
+                    console.log(`📋 ${normalCells.length} célula(s) normais disponíveis`);
+                    console.log(`   - Primeiras 5 células:`);
+                    normalCells.forEach((cell, index) => {
+                        if (index < 5) {
+                            const cellId = cell.id;
+                            const dataValue = cell.getAttribute('data-value');
+                            const textContent = cell.textContent;
+                            console.log(`     ${cellId}: data-value="${dataValue}", text="${textContent}"`);
+                        }
+                    });
+                }
+            }
+            
+            // Testar histórico de edições
+            console.log(`📝 Histórico de edições: ${appState.editHistory.size} células com histórico`);
+            appState.editHistory.forEach((history, cellId) => {
+                console.log(`   - ${cellId}: ${history.length} alterações`);
+            });
+            
+            // Testar histórico global
+            console.log(`🌍 Histórico global: ${appState.globalEditHistory.length} alterações`);
+            if (appState.globalEditHistory.length > 0) {
+                const lastEdit = appState.globalEditHistory[appState.globalEditHistory.length - 1];
+                console.log(`   - Última alteração: ${lastEdit.cellId} (${lastEdit.oldValue} → ${lastEdit.newValue})`);
+            }
+            
+            console.log('🧪 Teste concluído. Verifique o console para detalhes.');
+            console.log('💡 Dicas:');
+            console.log('   • Use Ctrl+Z em uma célula em edição para desfazer alterações');
+            console.log('   • Use Ctrl+Z fora de edição para desfazer última alteração global');
+            console.log('   • Use ESC para cancelar edição e restaurar valor original');
+            console.log('   • Use Enter para salvar alterações');
         }
     </script>
     </div> <!-- Fechamento da div do conteúdo principal -->
