@@ -37,6 +37,9 @@
             <div class="absolute inset-0 bg-black bg-opacity-60"></div>
         </div>
     
+    <!-- Sistema de Notificações Toast -->
+    <div id="toastContainer" class="toast-container"></div>
+    
     <!-- Conteúdo principal com z-index para ficar sobre o fundo -->
     <div class="relative z-10">
         <div class="container mx-auto px-4 py-8 max-w-10xl">
@@ -123,12 +126,6 @@
                 <button id="exportBtn" class="bg-green-500 text-white px-8 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-green-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-3">
                     <i class="fas fa-download"></i>Exportar
                 </button>
-                <button onclick="testCopyPaste()" class="bg-yellow-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-yellow-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Testar funcionalidade de copiar/colar, Ctrl+Z e ESC">
-                    <i class="fas fa-clipboard-check"></i>Testar Copiar/Colar + Ctrl+Z + ESC
-                </button>
-                <button onclick="testEditFlow()" class="bg-blue-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-blue-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Testar fluxo completo de edição">
-                    <i class="fas fa-edit"></i>Testar Fluxo de Edição
-                </button>
                 <button onclick="showHistoryInfo()" class="bg-purple-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-purple-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Mostrar informações do histórico de edições">
                     <i class="fas fa-history"></i>Info do Histórico
                 </button>
@@ -142,6 +139,10 @@
                 <p class="text-sm text-blue-700 text-center">
                     <i class="fas fa-info-circle mr-2"></i>
                     <strong>Dica:</strong> Todos os itens são carregados automaticamente. Use os filtros acima para refinar sua busca.
+                </p>
+                <p class="text-sm text-blue-600 text-center mt-2">
+                    <i class="fas fa-bell mr-2"></i>
+                    <strong>Notificações:</strong> Todas as mensagens aparecem como toasts no canto superior direito da tela.
                 </p>
             </div>
         </div>
@@ -388,7 +389,127 @@
                 100% { transform: scale(1); }
             }
             
-            /* Notificações */
+                    /* Sistema de Notificações Toast */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
+        }
+        
+        .toast {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+            max-width: 400px;
+            animation: toastSlideIn 0.3s ease-out;
+            border-left: 4px solid;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .toast.success {
+            border-left-color: #10b981;
+            background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
+            color: #065f46;
+        }
+        
+        .toast.error {
+            border-left-color: #ef4444;
+            background: linear-gradient(135deg, #fef2f2, #fef2f2);
+            color: #991b1b;
+        }
+        
+        .toast.warning {
+            border-left-color: #f59e0b;
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+            color: #92400e;
+        }
+        
+        .toast.info {
+            border-left-color: #3b82f6;
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            color: #1e40af;
+        }
+        
+        .toast-icon {
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+        
+        .toast-message {
+            flex: 1;
+            line-height: 1.4;
+        }
+        
+        .toast-close {
+            background: none;
+            border: none;
+            color: inherit;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            flex-shrink: 0;
+        }
+        
+        .toast-close:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.1);
+        }
+        
+        .toast-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 3px;
+            background: currentColor;
+            opacity: 0.3;
+            animation: toastProgress 5s linear forwards;
+        }
+        
+        @keyframes toastSlideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes toastSlideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        @keyframes toastProgress {
+            from {
+                width: 100%;
+            }
+            to {
+                width: 0%;
+            }
+        }
+        
+        /* Notificações antigas (mantidas para compatibilidade) */
             .copy-notification {
                 position: fixed;
                 top: 20px;
@@ -575,7 +696,8 @@
             currentPage: document.getElementById('currentPage'),
             prevPage: document.getElementById('prevPage'),
             nextPage: document.getElementById('nextPage'),
-            loadingMessage: document.getElementById('loadingMessage')
+            loadingMessage: document.getElementById('loadingMessage'),
+            toastContainer: document.getElementById('toastContainer')
         };
 
         // Inicialização da aplicação
@@ -633,17 +755,17 @@
                     if (editingCell) {
                         const cellId = editingCell.id;
                         if (undoLastEdit(cellId)) {
-                            showMessage('Alteração desfeita com sucesso!', 'success');
+                        showToast('Alteração desfeita com sucesso!', 'success');
                         } else {
-                            showMessage('Nada para desfazer nesta célula.', 'info');
+                        showToast('Nada para desfazer nesta célula.', 'info');
                         }
                     } else {
-                        // Se não há célula em edição, desfazer a última alteração global
-                        if (undoLastGlobalEdit()) {
-                            showMessage('Última alteração desfeita com sucesso!', 'success');
-                        } else {
-                            showMessage('Nada para desfazer.', 'info');
-                        }
+                    // Se não há célula em edição, desfazer a última alteração global
+                    if (undoLastGlobalEdit()) {
+                        showToast('Última alteração desfeita com sucesso!', 'success');
+                    } else {
+                        showToast('Nada para desfazer.', 'info');
+                    }
                     }
                 } else if (e.key === 'Escape') {
                     // ESC para cancelar edição
@@ -720,7 +842,7 @@
                     appState.itemsPerPage = limit;
                     
                     displaySearchResults();
-                    showMessage(`${data.total_encontrado} peça(s) encontrada(s).`, 'success');
+                    showToast(`${data.total_encontrado} peça(s) encontrada(s).`, 'success');
                 } else {
                     throw new Error(data.detail || 'Erro na busca');
                 }
@@ -729,7 +851,7 @@
                 if (error.message) {
                     errorMessage += ': ' + error.message;
                 }
-                showMessage(errorMessage, 'error');
+                showToast(errorMessage, 'error');
                 console.error('Erro na busca:', error);
             } finally {
                 showLoading(false);
@@ -765,15 +887,15 @@
                     displaySearchResults();
                     
                     if (data.total_encontrado > 0) {
-                        showMessage(`${data.total_encontrado} peça(s) carregada(s) automaticamente.`, 'success');
+                        showToast(`${data.total_encontrado} peça(s) carregada(s) automaticamente.`, 'success');
                     } else {
-                        showMessage('Nenhuma peça encontrada no banco de dados.', 'info');
+                        showToast('Nenhuma peça encontrada no banco de dados.', 'info');
                     }
                 } else {
                     throw new Error(data.detail || 'Erro ao carregar itens');
                 }
             } catch (error) {
-                showMessage('Erro ao carregar itens: ' + error.message, 'error');
+                showToast('Erro ao carregar itens: ' + error.message, 'error');
                 console.error('Erro ao carregar itens:', error);
             } finally {
                 showLoading(false);
@@ -914,7 +1036,7 @@
         // Exportar resultados
         function exportResults() {
             if (!appState.allResults || appState.allResults.length === 0) {
-                showMessage('Nenhum resultado para exportar.', 'error');
+                showToast('Nenhum resultado para exportar.', 'error');
                 return;
             }
 
@@ -939,9 +1061,9 @@
                 link.click();
                 document.body.removeChild(link);
 
-                showMessage('Arquivo CSV exportado com sucesso!', 'success');
+                showToast('Arquivo CSV exportado com sucesso!', 'success');
             } catch (error) {
-                showMessage('Erro ao exportar arquivo: ' + error.message, 'error');
+                showToast('Erro ao exportar arquivo: ' + error.message, 'error');
                 console.error('Erro na exportação:', error);
             }
         }
@@ -972,38 +1094,90 @@
             }
         }
 
-        // Mostrar mensagens para o usuário
-        function showMessage(message, type = 'info') {
-            const messageElement = elements.searchResults;
+        // Sistema de Notificações Toast
+        let toastCounter = 0;
+        
+        // Função para mostrar toast
+        function showToast(message, type = 'info', duration = 5000) {
+            const toastId = `toast-${++toastCounter}`;
             
-            // Remover classes anteriores
-            messageElement.className = 'mb-6 p-4 rounded-lg font-medium relative';
-            
-            // Adicionar classes baseadas no tipo
-            if (type === 'success') {
-                messageElement.classList.add('bg-green-100', 'text-green-800', 'border', 'border-green-200');
-            } else if (type === 'error') {
-                messageElement.classList.add('bg-red-100', 'text-red-800', 'border', 'border-red-200');
-            } else {
-                messageElement.classList.add('bg-blue-100', 'text-blue-800', 'border', 'border-blue-200');
+            // Definir ícone baseado no tipo
+            let icon = 'info-circle';
+            switch (type) {
+                case 'success':
+                    icon = 'check-circle';
+                    break;
+                case 'error':
+                    icon = 'exclamation-circle';
+                    break;
+                case 'warning':
+                    icon = 'exclamation-triangle';
+                    break;
+                case 'info':
+                default:
+                    icon = 'info-circle';
+                    break;
             }
             
-            messageElement.innerHTML = `
-                <button onclick="closeMessage()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700 transition-colors">
-                    <i class="fas fa-times text-lg"></i>
+            // Criar elemento toast
+            const toast = document.createElement('div');
+            toast.id = toastId;
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <i class="fas fa-${icon} toast-icon"></i>
+                <span class="toast-message">${message}</span>
+                <button class="toast-close" onclick="removeToast('${toastId}')">
+                    <i class="fas fa-times"></i>
                 </button>
-                <div class="text-center">
-                    <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'} text-2xl mb-2"></i>
-                    <p class="text-lg">${message}</p>
-                </div>
+                <div class="toast-progress"></div>
             `;
+            
+            // Adicionar ao container
+            elements.toastContainer.appendChild(toast);
+            
+            // Auto-remover após duração especificada
+            if (duration > 0) {
+                setTimeout(() => {
+                    removeToast(toastId);
+                }, duration);
+            }
+            
+            // Log no console para debug
+            console.log(`🍞 Toast ${type}: ${message}`);
+            
+            return toastId;
         }
         
-        // Função para fechar mensagem
+        // Função para remover toast
+        function removeToast(toastId) {
+            const toast = document.getElementById(toastId);
+            if (toast) {
+                toast.style.animation = 'toastSlideOut 0.3s ease-out forwards';
+                setTimeout(() => {
+                    if (toast.parentElement) {
+                        toast.parentElement.removeChild(toast);
+                    }
+                }, 300);
+            }
+        }
+        
+        // Função para limpar todos os toasts
+        function clearAllToasts() {
+            const toasts = elements.toastContainer.querySelectorAll('.toast');
+            toasts.forEach(toast => {
+                toast.remove();
+            });
+        }
+        
+        // Mostrar mensagens para o usuário (mantida para compatibilidade)
+        function showMessage(message, type = 'info') {
+            // Agora usa o sistema de toast
+            showToast(message, type);
+        }
+        
+        // Função para fechar mensagem (mantida para compatibilidade)
         function closeMessage() {
-            const messageElement = elements.searchResults;
-            messageElement.className = 'mb-6';
-            messageElement.innerHTML = '';
+            // Não faz nada no sistema de toast
         }
 
         // Função para editar célula
@@ -1224,7 +1398,7 @@
                     const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
                     
                     if (appState.allResults[actualRowIndex] && column) {
-                        appState.allResults[actualRowIndex][column] = lastEdit.oldValue;
+                    appState.allResults[actualRowIndex][column] = lastEdit.oldValue;
                         console.log(`✅ AppState atualizado: linha ${actualRowIndex}, coluna ${column} = ${lastEdit.oldValue}`);
                     }
                 } catch (error) {
@@ -1273,17 +1447,17 @@
                         textarea.focus();
                         textarea.select();
                     }
-                } else {
+            } else {
                     cell.textContent = lastGlobalEdit.oldValue;
                     cell.setAttribute('data-value', lastGlobalEdit.oldValue);
                 }
                 
                 // Atualizar appState
                 try {
-                    const rowIndex = parseInt(cell.getAttribute('data-row'));
+                const rowIndex = parseInt(cell.getAttribute('data-row'));
                     const column = cell.getAttribute('data-column');
-                    const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
-                    
+                const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                
                     if (appState.allResults[actualRowIndex] && column) {
                         appState.allResults[actualRowIndex][column] = lastGlobalEdit.oldValue;
                     }
@@ -1314,20 +1488,20 @@
             }
             
             // Remover modo de edição
-            cell.classList.remove('editing');
+                    cell.classList.remove('editing');
             
             // Atualizar conteúdo da célula com o novo valor
-            cell.textContent = newValue;
-            cell.setAttribute('data-value', newValue);
-            
+                    cell.textContent = newValue;
+                    cell.setAttribute('data-value', newValue);
+                    
             // Atualizar o valor no appState para manter consistência
             try {
-                const rowIndex = parseInt(cell.getAttribute('data-row'));
+                    const rowIndex = parseInt(cell.getAttribute('data-row'));
                 const column = cell.getAttribute('data-column');
-                const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                    const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
                 
                 if (appState.allResults[actualRowIndex] && column) {
-                    appState.allResults[actualRowIndex][column] = newValue;
+                        appState.allResults[actualRowIndex][column] = newValue;
                     console.log(`✅ AppState atualizado: linha ${actualRowIndex}, coluna ${column} = ${newValue}`);
                 }
             } catch (error) {
@@ -1335,7 +1509,7 @@
             }
             
             // Mostrar mensagem de sucesso
-            showMessage('Alteração salva com sucesso!', 'success');
+            showToast('Alteração salva com sucesso!', 'success');
             
             console.log(`✅ Célula ${cellId} salva com sucesso. Novo valor:`, newValue);
         }
@@ -1374,7 +1548,7 @@
             }
             
             // Mostrar mensagem de cancelamento
-            showMessage('Edição cancelada - valor original restaurado', 'info');
+            showToast('Edição cancelada - valor original restaurado', 'info');
         }
         
         // Função para selecionar célula
@@ -1511,7 +1685,7 @@
             if (selectedCells.length === 1) {
                 const value = selectedCells[0].getAttribute('data-value');
                 copyToClipboard(value);
-                showCopyNotification('Célula copiada!');
+            showToast('Célula copiada!', 'success');
                 return;
             }
             
@@ -1539,7 +1713,7 @@
             });
             
             copyToClipboard(copyText.trim());
-            showCopyNotification(`${selectedCells.length} células copiadas!`);
+            showToast(`${selectedCells.length} células copiadas!`, 'success');
         }
         
         // Função para copiar para clipboard
@@ -1714,7 +1888,7 @@
                     }, 2000);
                     
                     // Mostrar notificação de sucesso
-                    showCopyNotification('Célula salva com sucesso! Review date atualizado automaticamente.', 'success');
+                    showToast('Célula salva com sucesso! Review date atualizado automaticamente.', 'success');
                     
                 } else {
                     throw new Error(result.message || 'Erro ao salvar');
@@ -1730,84 +1904,18 @@
                 cell.setAttribute('data-value', originalValue);
                 
                 // Mostrar erro
-                showCopyNotification(`Erro ao salvar: ${error.message}`, 'error');
+                showToast(`Erro ao salvar: ${error.message}`, 'error');
             }
         }
 
-        // Função para testar o fluxo completo de edição
-        function testEditFlow() {
-            console.log('🧪 Testando fluxo completo de edição...');
-            
-            // Encontrar uma célula para testar
-            const testCell = document.querySelector('#excelTable td:not(.editing)');
-            if (!testCell) {
-                console.log('❌ Nenhuma célula disponível para teste');
-                return;
-            }
-            
-            const cellId = testCell.id;
-            const originalValue = testCell.getAttribute('data-value') || testCell.textContent;
-            
-            console.log(`📝 Testando célula ${cellId}:`);
-            console.log(`   - Valor original: "${originalValue}"`);
-            console.log(`   - data-value: "${testCell.getAttribute('data-value')}"`);
-            console.log(`   - textContent: "${testCell.textContent}"`);
-            
-            // Simular edição
-            console.log(`\n🔧 Simulando edição...`);
-            editCell(cellId, originalValue);
-            
-            // Aguardar um pouco e verificar
-            setTimeout(() => {
-                const editingCell = document.querySelector(`#${cellId}`);
-                if (editingCell && editingCell.classList.contains('editing')) {
-                    const textarea = editingCell.querySelector('.excel-input');
-                    if (textarea) {
-                        console.log(`✅ Célula em modo de edição:`);
-                        console.log(`   - Valor no textarea: "${textarea.value}"`);
-                        console.log(`   - Valor original armazenado: "${textarea.getAttribute('data-original-value')}"`);
-                        
-                        // Simular alteração
-                        textarea.value = 'VALOR TESTE ALTERADO';
-                        console.log(`   - Valor alterado para: "${textarea.value}"`);
-                        
-                        // Simular salvamento
-                        console.log(`\n💾 Simulando salvamento...`);
-                        saveCell(cellId, textarea.value, textarea.getAttribute('data-original-value'));
-                        
-                        // Verificar resultado
-                        setTimeout(() => {
-                            const savedCell = document.querySelector(`#${cellId}`);
-                            console.log(`\n📋 Resultado após salvamento:`);
-                            console.log(`   - Valor salvo: "${savedCell.textContent}"`);
-                            console.log(`   - data-value: "${savedCell.getAttribute('data-value')}"`);
-                            console.log(`   - Modo de edição: ${savedCell.classList.contains('editing') ? 'Sim' : 'Não'}`);
-                            
-                            // Testar nova edição
-                            console.log(`\n🔄 Testando nova edição...`);
-                            editCell(cellId, savedCell.textContent);
-                            
-                            setTimeout(() => {
-                                const newEditingCell = document.querySelector(`#${cellId}`);
-                                if (newEditingCell && newEditingCell.classList.contains('editing')) {
-                                    const newTextarea = newEditingCell.querySelector('.excel-input');
-                                    console.log(`✅ Nova edição iniciada:`);
-                                    console.log(`   - Valor no textarea: "${newTextarea.value}"`);
-                                    console.log(`   - Valor original armazenado: "${newTextarea.getAttribute('data-original-value')}"`);
-                                }
-                            }, 100);
-                        }, 100);
-                    }
-                }
-            }, 100);
-        }
+
 
         // Função para limpar histórico de edições
         function clearEditHistory() {
             appState.editHistory.clear();
             appState.globalEditHistory = [];
             console.log('🧹 Histórico de edições limpo');
-            showMessage('Histórico de edições limpo com sucesso!', 'success');
+            showToast('Histórico de edições limpo com sucesso!', 'success');
         }
 
         // Função para mostrar informações do histórico
@@ -1824,75 +1932,12 @@
                 console.log(`   - Última alteração: ${lastEdit.cellId} (${lastEdit.oldValue} → ${lastEdit.newValue})`);
             }
             
-            showMessage(`Histórico: ${cellHistoryCount} células, ${globalHistoryCount} alterações globais`, 'info');
+            showToast(`Histórico: ${cellHistoryCount} células, ${globalHistoryCount} alterações globais`, 'info');
         }
 
-        // Função para testar copiar e colar, Ctrl+Z e ESC
-        function testCopyPaste() {
-            console.log('🧪 Testando funcionalidade de copiar/colar, Ctrl+Z e ESC...');
-            
-            // Testar em campos de filtro
-            const filterInputs = ['pnSearch', 'descricaoSearch', 'ncmSearch'];
-            filterInputs.forEach(inputId => {
-                const input = document.getElementById(inputId);
-                if (input) {
-                    console.log(`✅ Campo ${inputId} configurado para copiar/colar`);
-                    console.log(`   - user-select: ${getComputedStyle(input).userSelect}`);
-                    console.log(`   - readOnly: ${input.readOnly}`);
-                    console.log(`   - disabled: ${input.disabled}`);
-                }
-            });
-            
-            // Testar em célula de edição (se houver)
-            const editingCells = document.querySelectorAll('#excelTable td.editing');
-            if (editingCells.length > 0) {
-                console.log(`✅ ${editingCells.length} célula(s) em modo de edição`);
-                editingCells.forEach(cell => {
-                    const textarea = cell.querySelector('.excel-input');
-                    if (textarea) {
-                        console.log(`   - Textarea configurado para copiar/colar`);
-                        console.log(`   - user-select: ${getComputedStyle(textarea).userSelect}`);
-                        console.log(`   - Valor original: ${textarea.getAttribute('data-original-value')}`);
-                        console.log(`   - Valor atual: ${textarea.value}`);
-                    }
-                });
-            } else {
-                // Testar células normais para ver seus valores atuais
-                const normalCells = document.querySelectorAll('#excelTable td:not(.editing)');
-                if (normalCells.length > 0) {
-                    console.log(`📋 ${normalCells.length} célula(s) normais disponíveis`);
-                    console.log(`   - Primeiras 5 células:`);
-                    normalCells.forEach((cell, index) => {
-                        if (index < 5) {
-                            const cellId = cell.id;
-                            const dataValue = cell.getAttribute('data-value');
-                            const textContent = cell.textContent;
-                            console.log(`     ${cellId}: data-value="${dataValue}", text="${textContent}"`);
-                        }
-                    });
-                }
-            }
-            
-            // Testar histórico de edições
-            console.log(`📝 Histórico de edições: ${appState.editHistory.size} células com histórico`);
-            appState.editHistory.forEach((history, cellId) => {
-                console.log(`   - ${cellId}: ${history.length} alterações`);
-            });
-            
-            // Testar histórico global
-            console.log(`🌍 Histórico global: ${appState.globalEditHistory.length} alterações`);
-            if (appState.globalEditHistory.length > 0) {
-                const lastEdit = appState.globalEditHistory[appState.globalEditHistory.length - 1];
-                console.log(`   - Última alteração: ${lastEdit.cellId} (${lastEdit.oldValue} → ${lastEdit.newValue})`);
-            }
-            
-            console.log('🧪 Teste concluído. Verifique o console para detalhes.');
-            console.log('💡 Dicas:');
-            console.log('   • Use Ctrl+Z em uma célula em edição para desfazer alterações');
-            console.log('   • Use Ctrl+Z fora de edição para desfazer última alteração global');
-            console.log('   • Use ESC para cancelar edição e restaurar valor original');
-            console.log('   • Use Enter para salvar alterações');
-        }
+
+
+
     </script>
     </div> <!-- Fechamento da div do conteúdo principal -->
 </body>
