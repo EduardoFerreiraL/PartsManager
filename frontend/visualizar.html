@@ -6,6 +6,8 @@
     <title>Gerenciador de Peças - Visualizar Itens</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Adicionar biblioteca XLSX -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -1041,12 +1043,69 @@
             }
 
             try {
+                // Verificar se a biblioteca XLSX está disponível
+                if (typeof XLSX === 'undefined') {
+                    showToast('Biblioteca XLSX não carregada. Usando CSV como fallback.', 'warning');
+                    exportToCSV();
+                    return;
+                }
+
+                // Preparar dados para XLSX
+                const columns = Object.keys(appState.allResults[0]);
+                const data = [
+                    columns, // Cabeçalho
+                    ...appState.allResults.map(row => 
+                        columns.map(col => {
+                            const value = row[col];
+                            // Tratar valores nulos/undefined
+                            if (value === null || value === undefined) {
+                                return '';
+                            }
+                            // Tratar datas
+                            if (col.includes('date') && value) {
+                                return new Date(value).toLocaleDateString('pt-BR');
+                            }
+                            return value;
+                        })
+                    )
+                ];
+
+                // Usar biblioteca SheetJS para gerar XLSX
+                const ws = XLSX.utils.aoa_to_sheet(data);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Peças");
+                
+                // Gerar arquivo
+                XLSX.writeFile(wb, `pecas_${new Date().toISOString().split('T')[0]}.xlsx`);
+                
+                showToast('Arquivo XLSX exportado com sucesso!', 'success');
+            } catch (error) {
+                console.error('Erro ao exportar XLSX:', error);
+                showToast('Erro ao exportar XLSX. Tentando CSV...', 'warning');
+                exportToCSV();
+            }
+        }
+
+        // Função de fallback para CSV
+        function exportToCSV() {
+            try {
                 // Converter para CSV
                 const columns = Object.keys(appState.allResults[0]);
                 const csvContent = [
                     columns.join(','),
                     ...appState.allResults.map(row => 
-                        columns.map(col => `"${row[col] || ''}"`).join(',')
+                        columns.map(col => {
+                            const value = row[col];
+                            // Escapar aspas e vírgulas
+                            if (value === null || value === undefined) {
+                                return '""';
+                            }
+                            const stringValue = String(value);
+                            if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
+                                return `"${stringValue.replace(/"/g, '""')}"`;
+                            }
+                            return `"${stringValue}"`;
+                        }).join(',')
                     )
                 ].join('\n');
 
@@ -1064,7 +1123,7 @@
                 showToast('Arquivo CSV exportado com sucesso!', 'success');
             } catch (error) {
                 showToast('Erro ao exportar arquivo: ' + error.message, 'error');
-                console.error('Erro na exportação:', error);
+                console.error('Erro na exportação CSV:', error);
             }
         }
 
