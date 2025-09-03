@@ -38,6 +38,83 @@
         <div class="absolute inset-0 bg-black bg-opacity-60"></div>
     </div>
     
+    <!-- Modal de Progresso -->
+    <div id="progressModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            <div class="text-center">
+                <!-- Ícone de Upload -->
+                <div class="mb-6">
+                    <div class="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-full mb-4">
+                        <i class="fas fa-upload text-3xl text-blue-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-2">Enviando Arquivo</h3>
+                    <p class="text-gray-600" id="progressStatus">Preparando upload...</p>
+                </div>
+
+                <!-- Barra de Progresso -->
+                <div class="mb-6">
+                    <div class="flex justify-between text-sm text-gray-600 mb-2">
+                        <span id="progressText">0%</span>
+                        <span id="progressDetails">Iniciando...</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div id="progressBar" class="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Estatísticas -->
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <div class="font-semibold text-gray-800" id="fileSizeDisplay">-</div>
+                        <div class="text-gray-600">Tamanho do arquivo</div>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-lg">
+                        <div class="font-semibold text-gray-800" id="uploadSpeed">-</div>
+                        <div class="text-gray-600">Velocidade</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Sucesso -->
+    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl p-8 max-w-lg w-full mx-4 shadow-2xl text-center">
+            <!-- Ícone de Sucesso Animado -->
+            <div class="mb-6">
+                <div class="inline-flex items-center justify-center w-24 h-24 bg-green-100 rounded-full mb-4 success-animation">
+                    <i class="fas fa-check text-4xl text-green-600"></i>
+                </div>
+                <h3 class="text-3xl font-bold text-gray-800 mb-2">Upload Concluído!</h3>
+                <p class="text-gray-600" id="successMessage">Arquivo processado com sucesso</p>
+            </div>
+
+            <!-- Estatísticas do Upload -->
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <div class="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <div class="font-bold text-green-800 text-lg" id="successItems">0</div>
+                        <div class="text-green-600">Itens processados</div>
+                    </div>
+                    <div>
+                        <div class="font-bold text-green-800 text-lg" id="successTime">0s</div>
+                        <div class="text-green-600">Tempo total</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div class="flex gap-3 justify-center">
+                <button onclick="closeSuccessModal()" class="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg font-medium hover:bg-gray-200 transition-all duration-300">
+                    <i class="fas fa-times mr-2"></i>Fechar
+                </button>
+                <button onclick="uploadAnotherFile()" class="bg-green-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-600 transition-all duration-300">
+                    <i class="fas fa-plus mr-2"></i>Novo Upload
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Conteúdo principal com z-index para ficar sobre o fundo -->
     <div class="relative z-10">
         <div class="container mx-auto px-4 py-8 max-w-6xl">
@@ -178,6 +255,87 @@
         </div>
     </div>
 
+    <style>
+        /* Animações para o modal de sucesso */
+        .success-animation {
+            animation: successPulse 0.6s ease-in-out;
+        }
+        
+        @keyframes successPulse {
+            0% {
+                transform: scale(0.8);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        /* Animação da barra de progresso */
+        .progress-bar-animation {
+            animation: progressGlow 2s ease-in-out infinite;
+        }
+        
+        @keyframes progressGlow {
+            0%, 100% {
+                box-shadow: 0 0 5px rgba(59, 130, 246, 0.5);
+            }
+            50% {
+                box-shadow: 0 0 20px rgba(59, 130, 246, 0.8);
+            }
+        }
+        
+        /* Animação de entrada dos modais */
+        .modal-enter {
+            animation: modalEnter 0.3s ease-out;
+        }
+        
+        @keyframes modalEnter {
+            from {
+                opacity: 0;
+                transform: scale(0.9) translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+        
+        /* Animação de saída dos modais */
+        .modal-exit {
+            animation: modalExit 0.2s ease-in;
+        }
+        
+        @keyframes modalExit {
+            from {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: scale(0.9) translateY(-20px);
+            }
+        }
+        
+        /* Efeito de loading no ícone */
+        .upload-icon-spin {
+            animation: uploadSpin 2s linear infinite;
+        }
+        
+        @keyframes uploadSpin {
+            from {
+                transform: rotate(0deg);
+            }
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+
     <script>
         // Configuração da API
         const API_BASE_URL = '/api';
@@ -192,7 +350,20 @@
             fileName: document.getElementById('fileName'),
             fileSize: document.getElementById('fileSize'),
             submitBtn: document.getElementById('submitBtn'),
-            uploadMessage: document.getElementById('uploadMessage')
+            uploadMessage: document.getElementById('uploadMessage'),
+            // Novos elementos para progresso
+            progressModal: document.getElementById('progressModal'),
+            progressStatus: document.getElementById('progressStatus'),
+            progressText: document.getElementById('progressText'),
+            progressDetails: document.getElementById('progressDetails'),
+            progressBar: document.getElementById('progressBar'),
+            fileSizeDisplay: document.getElementById('fileSizeDisplay'),
+            uploadSpeed: document.getElementById('uploadSpeed'),
+            // Elementos do modal de sucesso
+            successModal: document.getElementById('successModal'),
+            successMessage: document.getElementById('successMessage'),
+            successItems: document.getElementById('successItems'),
+            successTime: document.getElementById('successTime')
         };
 
         // Inicialização da aplicação
@@ -259,7 +430,7 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        // Upload de arquivo
+        // Upload de arquivo com progresso
         async function handleFileUpload(event) {
             event.preventDefault();
             
@@ -275,39 +446,163 @@
                 return;
             }
             
+            // Iniciar processo de upload com progresso
+            startUploadProcess(file);
+        }
+
+        // Iniciar processo de upload com simulação de progresso
+        async function startUploadProcess(file) {
+            const startTime = Date.now();
+            
+            // Mostrar modal de progresso
+            showProgressModal(file);
+            
+            // Simular progresso de upload
+            const progressInterval = simulateUploadProgress();
+            
             try {
                 const formData = new FormData();
                 formData.append('file', file);
                 
-                showMessage('Enviando arquivo...', 'info');
-                elements.submitBtn.disabled = true;
-                elements.submitBtn.innerHTML = '<span class="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span> Enviando...';
-                
+                // Fazer upload real
                 const response = await fetch(`${API_BASE_URL}/upload-excel`, {
                     method: 'POST',
                     body: formData
                 });
                 
                 const result = await response.json();
+                const endTime = Date.now();
+                const totalTime = Math.round((endTime - startTime) / 1000);
+                
+                // Parar simulação de progresso
+                clearInterval(progressInterval);
                 
                 if (response.ok) {
-                    if (result.status === 'conflicts_only') {
-                        // Mostrar mensagem de conflitos e botão para download
-                        showConflictsMessage(result, result.conflicts_excel);
-                    } else {
-                        showMessage(result.message, 'success');
-                        clearFile();
-                    }
+                    // Mostrar modal de sucesso
+                    showSuccessModal(result, totalTime);
                 } else {
+                    // Mostrar erro
+                    hideProgressModal();
                     showMessage(result.detail || 'Erro ao processar o arquivo.', 'error');
                 }
             } catch (error) {
+                clearInterval(progressInterval);
+                hideProgressModal();
                 showMessage('Erro de conexão com o servidor.', 'error');
                 console.error('Erro no upload:', error);
-            } finally {
-                elements.submitBtn.disabled = false;
-                elements.submitBtn.innerHTML = '<i class="fas fa-upload"></i>Enviar Arquivo';
             }
+        }
+
+        // Simular progresso de upload
+        function simulateUploadProgress() {
+            let progress = 0;
+            const stages = [
+                { progress: 10, status: 'Preparando arquivo...', details: 'Validando formato' },
+                { progress: 25, status: 'Enviando dados...', details: 'Upload em andamento' },
+                { progress: 50, status: 'Processando...', details: 'Analisando conteúdo' },
+                { progress: 75, status: 'Validando dados...', details: 'Verificando integridade' },
+                { progress: 90, status: 'Finalizando...', details: 'Salvando no banco' },
+                { progress: 100, status: 'Concluído!', details: 'Upload finalizado' }
+            ];
+            
+            let currentStage = 0;
+            
+            return setInterval(() => {
+                if (currentStage < stages.length) {
+                    const stage = stages[currentStage];
+                    updateProgress(stage.progress, stage.status, stage.details);
+                    currentStage++;
+                }
+            }, 800); // Atualizar a cada 800ms
+        }
+
+        // Atualizar progresso
+        function updateProgress(percentage, status, details) {
+            elements.progressText.textContent = `${percentage}%`;
+            elements.progressStatus.textContent = status;
+            elements.progressDetails.textContent = details;
+            elements.progressBar.style.width = `${percentage}%`;
+            
+            // Adicionar animação na barra quando estiver ativa
+            if (percentage < 100) {
+                elements.progressBar.classList.add('progress-bar-animation');
+            } else {
+                elements.progressBar.classList.remove('progress-bar-animation');
+            }
+        }
+
+        // Mostrar modal de progresso
+        function showProgressModal(file) {
+            // Configurar informações do arquivo
+            elements.fileSizeDisplay.textContent = formatFileSize(file.size);
+            elements.uploadSpeed.textContent = 'Calculando...';
+            
+            // Mostrar modal com animação
+            elements.progressModal.classList.remove('hidden');
+            elements.progressModal.classList.add('modal-enter');
+            
+            // Simular velocidade de upload
+            setTimeout(() => {
+                const speed = Math.random() * 2 + 1; // Entre 1-3 MB/s
+                elements.uploadSpeed.textContent = `${speed.toFixed(1)} MB/s`;
+            }, 1000);
+        }
+
+        // Esconder modal de progresso
+        function hideProgressModal() {
+            elements.progressModal.classList.add('modal-exit');
+            setTimeout(() => {
+                elements.progressModal.classList.add('hidden');
+                elements.progressModal.classList.remove('modal-enter', 'modal-exit');
+                // Resetar progresso
+                updateProgress(0, 'Preparando upload...', 'Iniciando...');
+            }, 200);
+        }
+
+        // Mostrar modal de sucesso
+        function showSuccessModal(result, totalTime) {
+            // Esconder modal de progresso
+            hideProgressModal();
+            
+            // Configurar informações de sucesso
+            let itemsProcessed = 0;
+            let message = 'Arquivo processado com sucesso!';
+            
+            if (result.status === 'conflicts_only') {
+                // Para conflitos, mostrar mensagem especial e não mostrar modal de sucesso
+                showConflictsMessage(result, result.conflicts_excel);
+                return;
+            } else if (result.rows_inserted) {
+                itemsProcessed = result.rows_inserted;
+                message = `${itemsProcessed} itens adicionados com sucesso!`;
+            }
+            
+            elements.successMessage.textContent = message;
+            elements.successItems.textContent = itemsProcessed;
+            elements.successTime.textContent = `${totalTime}s`;
+            
+            // Mostrar modal com animação
+            setTimeout(() => {
+                elements.successModal.classList.remove('hidden');
+                elements.successModal.classList.add('modal-enter');
+            }, 300);
+        }
+
+        // Fechar modal de sucesso
+        function closeSuccessModal() {
+            elements.successModal.classList.add('modal-exit');
+            setTimeout(() => {
+                elements.successModal.classList.add('hidden');
+                elements.successModal.classList.remove('modal-enter', 'modal-exit');
+            }, 200);
+        }
+
+        // Upload de outro arquivo
+        function uploadAnotherFile() {
+            closeSuccessModal();
+            clearFile();
+            // Focar no input de arquivo
+            elements.fileInput.click();
         }
 
         // Atualizar status da API na interface
@@ -361,6 +656,9 @@
 
         // Mostrar mensagem de conflitos com opção de download
         function showConflictsMessage(result, conflictsExcel) {
+            // Esconder modal de progresso primeiro
+            hideProgressModal();
+            
             const messageElement = elements.uploadMessage;
             
             messageElement.className = 'mt-6 p-6 rounded-lg font-medium text-center';

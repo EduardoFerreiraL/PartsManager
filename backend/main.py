@@ -74,7 +74,7 @@ def clean_data_for_supabase(data_list):
         'description': 'string',
         'ncm': 'string',
         'date_of_creation': 'date',
-        'review_date': 'date',
+        'review_date': 'timestamp',
         'process': 'string',
         'machine': 'string',
         'created_at': 'ignore'  # Ignorar - será gerado automaticamente
@@ -131,6 +131,13 @@ def clean_data_for_supabase(data_list):
                     # Tratar timestamps
                     if isinstance(value, pd.Timestamp):
                         cleaned_row[key] = value.strftime('%Y-%m-%d %H:%M:%S') if pd.notna(value) else None
+                    elif isinstance(value, str) and value.strip():
+                        # Tentar converter string para timestamp
+                        try:
+                            pd_timestamp = pd.to_datetime(value, errors='coerce')
+                            cleaned_row[key] = pd_timestamp.strftime('%Y-%m-%d %H:%M:%S') if pd.notna(pd_timestamp) else None
+                        except:
+                            cleaned_row[key] = None
                     else:
                         cleaned_row[key] = None
                 
@@ -798,9 +805,15 @@ def check_and_create_table():
         }
 
 @app.put("/api/pecas/part_number/{part_number}", summary="Atualizar Peça por Part Number")
-def update_peca_by_part_number(part_number: int, peca_data: dict):
+def update_peca_by_part_number(part_number: str, peca_data: dict):
     """Atualiza uma peça específica no banco de dados usando part_number como identificador"""
     try:
+        # Converter part_number para int se possível, senão usar como string
+        try:
+            part_number_int = int(part_number)
+        except ValueError:
+            part_number_int = part_number
+        
         # Validar dados recebidos
         allowed_fields = {
             'chinese_description', 'description', 'ncm',
@@ -813,8 +826,13 @@ def update_peca_by_part_number(part_number: int, peca_data: dict):
         if not update_data:
             raise HTTPException(status_code=400, detail="Nenhum campo válido para atualização")
         
+        print(f"Atualizando peça com part_number: {part_number_int}")
+        print(f"Dados para atualização: {update_data}")
+        
         # Atualizar no Supabase usando part_number
-        response = supabase.table(TABLE_NAME).update(update_data).eq("part_number", part_number).execute()
+        response = supabase.table(TABLE_NAME).update(update_data).eq("part_number", part_number_int).execute()
+        
+        print(f"Resposta do Supabase: {response}")
         
         if not response.data:
             raise HTTPException(status_code=404, detail=f"Peça com part_number {part_number} não encontrada")
@@ -827,6 +845,7 @@ def update_peca_by_part_number(part_number: int, peca_data: dict):
         
     except Exception as e:
         error_message = str(e)
+        print(f"Erro ao atualizar peça: {error_message}")
         raise HTTPException(status_code=500, detail=f"Erro ao atualizar peça: {error_message}")
 
 if __name__ == "__main__":

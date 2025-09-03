@@ -134,6 +134,9 @@
                 <button onclick="clearEditHistory()" class="bg-red-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-red-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Limpar todo o histórico de edições">
                     <i class="fas fa-trash"></i>Limpar Histórico
                 </button>
+                <button onclick="undoLastChange()" class="bg-orange-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-orange-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Desfazer última alteração (Ctrl+Z)">
+                    <i class="fas fa-undo"></i>Desfazer (Ctrl+Z)
+                </button>
 
             </div>
             
@@ -170,7 +173,8 @@
                     • F2: Edita primeira célula selecionada<br>
                     • <strong>Ctrl+Z: Desfaz última alteração (na célula em edição ou globalmente)</strong><br>
                     • <strong>ESC: Cancela edição e restaura valor original</strong><br>
-                    • <strong>Histórico: Mantém até 10 alterações por célula e 50 globalmente</strong>
+                    • <strong>Histórico: Mantém até 10 alterações por célula e 50 globalmente</strong><br>
+                    • <strong>📅 Review Date: Atualizado automaticamente para o timestamp atual (data e hora) sempre que qualquer célula da linha for modificada</strong>
                 </div>
             </div>
             
@@ -751,24 +755,9 @@
             document.addEventListener('keydown', (e) => {
                 if (e.ctrlKey && e.key === 'z') {
                     e.preventDefault();
-                    
-                    // Se houver uma célula em edição, desfazer nela
-                    const editingCell = document.querySelector('#excelTable td.editing');
-                    if (editingCell) {
-                        const cellId = editingCell.id;
-                        if (undoLastEdit(cellId)) {
-                        showToast('Alteração desfeita com sucesso!', 'success');
-                        } else {
-                        showToast('Nada para desfazer nesta célula.', 'info');
-                        }
-                    } else {
-                    // Se não há célula em edição, desfazer a última alteração global
-                    if (undoLastGlobalEdit()) {
-                        showToast('Última alteração desfeita com sucesso!', 'success');
-                    } else {
-                        showToast('Nada para desfazer.', 'info');
-                    }
-                    }
+                    e.stopPropagation();
+                    console.log('🔄 Ctrl+Z detectado globalmente');
+                    undoLastChange();
                 } else if (e.key === 'Escape') {
                     // ESC para cancelar edição
                     const editingCell = document.querySelector('#excelTable td.editing');
@@ -1288,9 +1277,6 @@
                     saveCell(cellId, textarea.value, actualCurrentValue);
                 } else if (e.key === 'Escape') {
                     cancelEdit(cellId, actualCurrentValue);
-                } else if (e.ctrlKey && e.key === 'z') {
-                    e.preventDefault();
-                    undoLastEdit(cellId);
                 }
             });
             
@@ -1298,8 +1284,48 @@
             enableCopyPaste(textarea);
         }
         
+        // Função para atualizar automaticamente o review_date quando qualquer célula da linha for modificada
+        function updateReviewDateForRow(cellId) {
+            try {
+                const cell = document.getElementById(cellId);
+                if (!cell) return;
+                
+                // Verificar se a célula editada NÃO é a própria review_date para evitar loop
+                const column = cell.getAttribute('data-column');
+                if (column === 'review_date') {
+                    console.log('Célula editada é review_date, não atualizando automaticamente');
+                    return;
+                }
+                
+                // Obter informações da linha
+                const rowIndex = parseInt(cell.getAttribute('data-row'));
+                const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                
+                // Gerar timestamp atual no formato ISO completo (YYYY-MM-DDTHH:mm:ss.sssZ)
+                const now = new Date();
+                const currentTimestamp = now.toISOString();
+                
+                // Atualizar o review_date nos dados em memória
+                if (appState.allResults[actualRowIndex]) {
+                    appState.allResults[actualRowIndex]['review_date'] = currentTimestamp;
+                    console.log(`📅 Review date atualizado na memória para linha ${actualRowIndex}: ${currentTimestamp}`);
+                }
+                
+                // Atualizar visualmente a célula review_date na tabela
+                updateReviewDateCell(rowIndex, currentTimestamp);
+                
+                // Salvar no banco de dados (com delay para evitar conflito com a edição principal)
+                setTimeout(() => {
+                    saveReviewDateToDatabase(cell, currentTimestamp);
+                }, 100);
+                
+            } catch (error) {
+                console.error('Erro ao atualizar review_date:', error);
+            }
+        }
+
         // Função para atualizar visualmente a célula review_date
-        function updateReviewDateCell(rowIndex, newReviewDate) {
+        function updateReviewDateCell(rowIndex, newReviewTimestamp) {
             try {
                 // Encontrar a célula review_date na linha especificada
                 const row = document.querySelector(`#excelTable tbody tr:nth-child(${rowIndex + 1})`);
@@ -1308,9 +1334,20 @@
                 // Procurar pela célula que tem data-column="review_date"
                 const reviewDateCell = row.querySelector('td[data-column="review_date"]');
                 if (reviewDateCell) {
-                    // Atualizar o valor visual e o atributo data-value
-                    reviewDateCell.textContent = newReviewDate;
-                    reviewDateCell.setAttribute('data-value', newReviewDate);
+                    // Converter timestamp para formato legível (DD/MM/YYYY HH:mm:ss)
+                    const date = new Date(newReviewTimestamp);
+                    const formattedDate = date.toLocaleString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                    
+                    // Atualizar o valor visual (formato legível) e o atributo data-value (timestamp completo)
+                    reviewDateCell.textContent = formattedDate;
+                    reviewDateCell.setAttribute('data-value', newReviewTimestamp);
                     
                     // Adicionar efeito visual temporário para mostrar que foi atualizado
                     reviewDateCell.classList.add('review-date-updated');
@@ -1318,15 +1355,72 @@
                         reviewDateCell.classList.remove('review-date-updated');
                     }, 3000);
                     
-                    console.log(`Review date atualizado na linha ${rowIndex + 1}: ${newReviewDate}`);
+                    console.log(`Review date atualizado na linha ${rowIndex + 1}: ${formattedDate} (${newReviewTimestamp})`);
                 }
             } catch (error) {
                 console.error('Erro ao atualizar célula review_date:', error);
             }
         }
 
+        // Função para salvar o review_date no banco de dados
+        async function saveReviewDateToDatabase(cell, newReviewTimestamp) {
+            try {
+                // Buscar part_number da peça
+                const partNumber = getPecaPartNumberFromRow(cell);
+                
+                if (!partNumber || partNumber === 'undefined') {
+                    console.warn('Part Number não encontrado para atualizar review_date');
+                    return;
+                }
+                
+                // Preparar dados para atualização
+                const updateData = {
+                    'review_date': newReviewTimestamp
+                };
+                
+                console.log('Salvando review_date no banco:', { 
+                    partNumber, 
+                    reviewTimestamp: newReviewTimestamp
+                });
+                
+                // Atualizar no banco de dados usando part_number
+                const response = await fetch(`${API_BASE_URL}/pecas/part_number/${partNumber}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updateData)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Erro ao salvar review_date');
+                }
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    console.log('✅ Review date salvo no banco com sucesso');
+                } else {
+                    throw new Error(result.message || 'Erro ao salvar review_date');
+                }
+                
+            } catch (error) {
+                console.error('Erro ao salvar review_date no banco:', error);
+                // Não mostrar toast de erro para não incomodar o usuário, pois a funcionalidade principal já foi salva
+            }
+        }
+
         // Função para habilitar copiar e colar em elementos de input
         function enableCopyPaste(element) {
+            // Verificar se já foi configurado para evitar duplicação
+            if (element.hasAttribute('data-copypaste-enabled')) {
+                return;
+            }
+            
+            // Marcar como configurado
+            element.setAttribute('data-copypaste-enabled', 'true');
+            
             // Remover qualquer restrição de copiar/colar
             element.style.userSelect = 'auto';
             element.style.webkitUserSelect = 'auto';
@@ -1357,10 +1451,13 @@
             
             // Garantir que o elemento aceite todas as teclas de atalho
             element.addEventListener('keydown', (e) => {
-                // Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+A
+                // Ctrl+C, Ctrl+V, Ctrl+X, Ctrl+A - mas apenas se estiver dentro de um input/textarea
                 if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'v' || e.key === 'x' || e.key === 'a')) {
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
+                    // Só parar propagação se estiver dentro de um elemento editável
+                    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                    }
                 }
             });
             
@@ -1377,6 +1474,12 @@
 
         // Função para adicionar entrada ao histórico de edições
         function addToEditHistory(cellId, oldValue, newValue) {
+            console.log(`📝 Adicionando ao histórico: ${cellId}`, {
+                'valor antigo': oldValue,
+                'valor novo': newValue,
+                'histórico global antes': appState.globalEditHistory.length
+            });
+            
             if (!appState.editHistory.has(cellId)) {
                 appState.editHistory.set(cellId, []);
             }
@@ -1410,12 +1513,20 @@
                 'valor antigo': oldValue,
                 'valor novo': newValue,
                 'histórico da célula': history.length,
-                'histórico global': appState.globalEditHistory.length
+                'histórico global': appState.globalEditHistory.length,
+                'última entrada global': appState.globalEditHistory[appState.globalEditHistory.length - 1]
             });
         }
 
         // Função para desfazer a última alteração de uma célula
         function undoLastEdit(cellId) {
+            console.log(`🔄 Tentando desfazer alteração em ${cellId}`);
+            console.log(`📊 Estado do histórico:`, {
+                'tem histórico para célula': appState.editHistory.has(cellId),
+                'histórico global': appState.globalEditHistory.length,
+                'todas as células com histórico': Array.from(appState.editHistory.keys())
+            });
+            
             if (!appState.editHistory.has(cellId)) {
                 console.log(`❌ Nenhum histórico para ${cellId}`);
                 return false;
@@ -1448,6 +1559,9 @@
                     // Se não estiver em edição, atualizar o texto da célula
                     cell.textContent = lastEdit.oldValue;
                     cell.setAttribute('data-value', lastEdit.oldValue);
+                    
+                    // Salvar a alteração desfeita no banco de dados (sem atualizar review_date)
+                    saveCellToDatabase(cellId, lastEdit.oldValue, true);
                 }
                 
                 // Atualizar o valor no appState
@@ -1472,6 +1586,12 @@
 
         // Função para desfazer a última alteração global (Ctrl+Z global)
         function undoLastGlobalEdit() {
+            console.log(`🌍 Tentando desfazer alteração global`);
+            console.log(`📊 Estado do histórico global:`, {
+                'tamanho do histórico global': appState.globalEditHistory.length,
+                'histórico global': appState.globalEditHistory
+            });
+            
             if (appState.globalEditHistory.length === 0) {
                 console.log(`❌ Nenhum histórico global disponível`);
                 return false;
@@ -1506,9 +1626,12 @@
                         textarea.focus();
                         textarea.select();
                     }
-            } else {
+                } else {
                     cell.textContent = lastGlobalEdit.oldValue;
                     cell.setAttribute('data-value', lastGlobalEdit.oldValue);
+                    
+                    // Salvar a alteração desfeita no banco de dados (sem atualizar review_date)
+                    saveCellToDatabase(lastGlobalEdit.cellId, lastGlobalEdit.oldValue, true);
                 }
                 
                 // Atualizar appState
@@ -1530,7 +1653,7 @@
             return false;
         }
 
-        // Função para salvar célula com histórico
+        // Função para salvar célula com histórico e atualização automática do review_date
         function saveCell(cellId, newValue, oldValue) {
             const cell = document.getElementById(cellId);
             if (!cell) return;
@@ -1540,35 +1663,38 @@
                 oldValue = cell.getAttribute('data-value') || cell.textContent || '';
             }
             
-            // Se o valor mudou, adicionar ao histórico
+            // Se o valor mudou, adicionar ao histórico e salvar no banco
             if (newValue !== oldValue) {
                 addToEditHistory(cellId, oldValue, newValue);
                 console.log(`💾 Salvando alteração em ${cellId}:`, oldValue, '→', newValue);
+                
+                // Atualizar automaticamente o review_date quando qualquer célula for modificada
+                updateReviewDateForRow(cellId);
+                
+                // Salvar no banco de dados
+                saveCellToDatabase(cellId, newValue);
+            } else {
+                // Se o valor não mudou, apenas remover modo de edição
+                cell.classList.remove('editing');
             }
             
-            // Remover modo de edição
-                    cell.classList.remove('editing');
-            
             // Atualizar conteúdo da célula com o novo valor
-                    cell.textContent = newValue;
-                    cell.setAttribute('data-value', newValue);
+            cell.textContent = newValue;
+            cell.setAttribute('data-value', newValue);
                     
             // Atualizar o valor no appState para manter consistência
             try {
-                    const rowIndex = parseInt(cell.getAttribute('data-row'));
+                const rowIndex = parseInt(cell.getAttribute('data-row'));
                 const column = cell.getAttribute('data-column');
-                    const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
                 
                 if (appState.allResults[actualRowIndex] && column) {
-                        appState.allResults[actualRowIndex][column] = newValue;
+                    appState.allResults[actualRowIndex][column] = newValue;
                     console.log(`✅ AppState atualizado: linha ${actualRowIndex}, coluna ${column} = ${newValue}`);
                 }
             } catch (error) {
                 console.warn('Não foi possível atualizar appState ao salvar:', error);
             }
-            
-            // Mostrar mensagem de sucesso
-            showToast('Alteração salva com sucesso!', 'success');
             
             console.log(`✅ Célula ${cellId} salva com sucesso. Novo valor:`, newValue);
         }
@@ -1709,7 +1835,9 @@
                 
                 // Ctrl+C para copiar células selecionadas
                 if (e.ctrlKey && e.key === 'c') {
+                    console.log('📋 Ctrl+C detectado no event listener global');
                     const selectedCells = document.querySelectorAll('#excelTable td.selected');
+                    console.log('📋 Células selecionadas encontradas:', selectedCells.length);
                     if (selectedCells.length > 0) {
                         copySelectedCells(selectedCells);
                     }
@@ -1738,13 +1866,16 @@
         
         // Função para copiar células selecionadas
         function copySelectedCells(selectedCells) {
+            console.log('📋 Função copySelectedCells chamada com:', selectedCells.length, 'células');
+            
             if (selectedCells.length === 0) return;
             
             // Se apenas uma célula, copiar o valor
             if (selectedCells.length === 1) {
                 const value = selectedCells[0].getAttribute('data-value');
+                console.log('📋 Copiando valor de uma célula:', value);
                 copyToClipboard(value);
-            showToast('Célula copiada!', 'success');
+                showToast('Célula copiada!', 'success');
                 return;
             }
             
@@ -1859,21 +1990,9 @@
         }
 
         // Função para salvar célula no banco de dados
-        async function saveCellToDatabase(cellId, newValue) {
+        async function saveCellToDatabase(cellId, newValue, skipReviewDateUpdate = false) {
             const cell = document.getElementById(cellId);
             if (!cell) return;
-            
-            const originalValue = cell.getAttribute('data-value');
-            
-            // Se o valor não mudou, não fazer nada
-            if (newValue === originalValue) {
-                cell.classList.remove('editing');
-                return;
-            }
-            
-            // Mostrar indicador de salvamento
-            cell.classList.add('saving');
-            cell.innerHTML = '<i class="fas fa-spinner fa-spin text-blue-500"></i>';
             
             try {
                 // Obter informações da célula
@@ -1886,14 +2005,9 @@
                     throw new Error('Part Number da peça não encontrado. Verifique se a tabela foi carregada corretamente.');
                 }
                 
-                // Preparar dados para atualização
+                // Preparar dados para atualização (apenas o campo modificado)
                 const updateData = {};
                 updateData[column] = newValue;
-                
-                // Sempre incluir a data de revisão atual quando qualquer campo for modificado
-                const now = new Date();
-                const reviewDate = now.toISOString().split('T')[0]; // Formato YYYY-MM-DD
-                updateData['review_date'] = reviewDate;
                 
                 console.log('Salvando célula no banco:', { 
                     partNumber, 
@@ -1902,7 +2016,7 @@
                     updateData,
                     cellId,
                     rowIndex: cell.getAttribute('data-row'),
-                    reviewDate: reviewDate
+                    skipReviewDateUpdate
                 });
                 
                 // Atualizar no banco de dados usando part_number
@@ -1922,48 +2036,37 @@
                 const result = await response.json();
                 
                 if (result.status === 'success') {
-                    // Atualizar célula com sucesso
-                    cell.classList.remove('saving');
-                    cell.classList.remove('editing');
-                    cell.textContent = newValue;
-                    cell.setAttribute('data-value', newValue);
+                    console.log('✅ Célula salva no banco com sucesso:', result);
                     
-                    // Atualizar dados na memória
-                    const rowIndex = parseInt(cell.getAttribute('data-row'));
-                    const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
-                    if (appState.allResults[actualRowIndex]) {
-                        appState.allResults[actualRowIndex][column] = newValue;
-                        // Atualizar também a review_date nos dados em memória
-                        appState.allResults[actualRowIndex]['review_date'] = reviewDate;
+                    // Só mostrar toast se não for um desfazer silencioso
+                    if (!skipReviewDateUpdate) {
+                        showToast('Alteração salva no banco de dados!', 'success');
                     }
-                    
-                    // Atualizar visualmente a célula review_date na tabela
-                    updateReviewDateCell(rowIndex, reviewDate);
-                    
-                    // Mostrar confirmação visual temporária
-                    cell.classList.add('saved');
-                    setTimeout(() => {
-                        cell.classList.remove('saved');
-                    }, 2000);
-                    
-                    // Mostrar notificação de sucesso
-                    showToast('Célula salva com sucesso! Review date atualizado automaticamente.', 'success');
-                    
                 } else {
                     throw new Error(result.message || 'Erro ao salvar');
                 }
                 
             } catch (error) {
-                console.error('Erro ao salvar célula:', error);
+                console.error('Erro ao salvar célula no banco:', error);
+                showToast(`Erro ao salvar no banco: ${error.message}`, 'error');
                 
-                // Restaurar valor original em caso de erro
-                cell.classList.remove('saving');
-                cell.classList.remove('editing');
+                // Em caso de erro, restaurar o valor original
+                const originalValue = cell.getAttribute('data-value');
                 cell.textContent = originalValue;
                 cell.setAttribute('data-value', originalValue);
                 
-                // Mostrar erro
-                showToast(`Erro ao salvar: ${error.message}`, 'error');
+                // Atualizar appState com valor original
+                try {
+                    const rowIndex = parseInt(cell.getAttribute('data-row'));
+                    const column = cell.getAttribute('data-column');
+                    const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                    
+                    if (appState.allResults[actualRowIndex] && column) {
+                        appState.allResults[actualRowIndex][column] = originalValue;
+                    }
+                } catch (updateError) {
+                    console.warn('Erro ao atualizar appState após falha:', updateError);
+                }
             }
         }
 
@@ -1992,6 +2095,31 @@
             }
             
             showToast(`Histórico: ${cellHistoryCount} células, ${globalHistoryCount} alterações globais`, 'info');
+        }
+
+        // Função para desfazer última alteração (chamada pelo botão)
+        function undoLastChange() {
+            console.log('🔄 Botão Desfazer clicado');
+            
+            // Se houver uma célula em edição, desfazer nela
+            const editingCell = document.querySelector('#excelTable td.editing');
+            if (editingCell) {
+                const cellId = editingCell.id;
+                console.log(`Desfazendo alteração na célula em edição: ${cellId}`);
+                if (undoLastEdit(cellId)) {
+                    showToast('Alteração desfeita com sucesso!', 'success');
+                } else {
+                    showToast('Nada para desfazer nesta célula.', 'info');
+                }
+            } else {
+                // Se não há célula em edição, desfazer a última alteração global
+                console.log('Desfazendo última alteração global');
+                if (undoLastGlobalEdit()) {
+                    showToast('Última alteração desfeita com sucesso!', 'success');
+                } else {
+                    showToast('Nada para desfazer.', 'info');
+                }
+            }
         }
 
 
