@@ -819,23 +819,8 @@
                 }
             });
             
-            // Listener global para Ctrl+Z e ESC
-            document.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && e.key === 'z') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('🔄 Ctrl+Z detectado globalmente');
-                    undoLastChange();
-                } else if (e.key === 'Escape') {
-                    // ESC para cancelar edição
-                    const editingCell = document.querySelector('#excelTable td.editing');
-                    if (editingCell) {
-                        const cellId = editingCell.id;
-                        const originalValue = editingCell.getAttribute('data-value') || editingCell.textContent || '';
-                        cancelEdit(cellId, originalValue);
-                    }
-                }
-            });
+            // Configurar todos os eventos de teclado em uma única função
+            setupAllKeyboardEvents();
         }
 
         // Verificar status da API
@@ -1041,9 +1026,6 @@
 
             // Atualizar botões de paginação
             updatePaginationButtons();
-            
-            // Configurar eventos de teclado para cópia
-            setupExcelKeyboardEvents();
         }
 
         // Formatar nome da coluna para exibição
@@ -1948,22 +1930,42 @@
             }
         }
         
-        // Configurar eventos de teclado para Excel
-        function setupExcelKeyboardEvents() {
+        // Função consolidada para todos os eventos de teclado
+        function setupAllKeyboardEvents() {
             document.addEventListener('keydown', (e) => {
                 // Prevenir comportamentos padrão para teclas especiais
                 if (e.ctrlKey || e.shiftKey || e.key === 'Delete' || e.key === 'F2') {
                     e.preventDefault();
                 }
                 
+                // Ctrl+Z para desfazer alterações
+                if (e.ctrlKey && e.key === 'z') {
+                    e.stopPropagation();
+                    console.log('🔄 Ctrl+Z detectado - executando desfazer');
+                    undoLastChange();
+                    return; // Importante: retornar para evitar processamento duplo
+                }
+                
+                // ESC para cancelar edição
+                if (e.key === 'Escape') {
+                    const editingCell = document.querySelector('#excelTable td.editing');
+                    if (editingCell) {
+                        const cellId = editingCell.id;
+                        const originalValue = editingCell.getAttribute('data-value') || editingCell.textContent || '';
+                        cancelEdit(cellId, originalValue);
+                    }
+                    return;
+                }
+                
                 // Ctrl+C para copiar células selecionadas
                 if (e.ctrlKey && e.key === 'c') {
-                    console.log('📋 Ctrl+C detectado no event listener global');
+                    console.log('📋 Ctrl+C detectado');
                     const selectedCells = document.querySelectorAll('#excelTable td.selected');
                     console.log('📋 Células selecionadas encontradas:', selectedCells.length);
                     if (selectedCells.length > 0) {
                         copySelectedCells(selectedCells);
                     }
+                    return;
                 }
                 
                 // Delete para limpar células selecionadas ou excluir linha
@@ -1988,6 +1990,7 @@
                             });
                         }
                     }
+                    return;
                 }
                 
                 // F2 para editar primeira célula selecionada
@@ -2003,6 +2006,7 @@
                         const currentValue = selectedCell.getAttribute('data-value');
                         editCell(selectedCell.id, currentValue);
                     }
+                    return;
                 }
             });
         }
