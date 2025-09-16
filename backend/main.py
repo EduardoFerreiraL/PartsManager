@@ -848,6 +848,44 @@ def update_peca_by_part_number(part_number: str, peca_data: dict):
         print(f"Erro ao atualizar peça: {error_message}")
         raise HTTPException(status_code=500, detail=f"Erro ao atualizar peça: {error_message}")
 
+@app.delete("/api/pecas/part_number/{part_number}", summary="Excluir Peça por Part Number")
+def delete_peca_by_part_number(part_number: str):
+    """Exclui uma peça específica do banco de dados usando part_number como identificador"""
+    try:
+        # Converter part_number para int se possível, senão usar como string
+        try:
+            part_number_int = int(part_number)
+        except ValueError:
+            part_number_int = part_number
+        
+        print(f"Excluindo peça com part_number: {part_number_int}")
+        
+        # Primeiro, verificar se a peça existe
+        check_response = supabase.table(TABLE_NAME).select("part_number").eq("part_number", part_number_int).execute()
+        
+        if not check_response.data:
+            raise HTTPException(status_code=404, detail=f"Peça com part_number {part_number} não encontrada")
+        
+        # Excluir do Supabase usando part_number
+        response = supabase.table(TABLE_NAME).delete().eq("part_number", part_number_int).execute()
+        
+        print(f"Resposta do Supabase: {response}")
+        
+        return {
+            "status": "success",
+            "message": f"Peça com part_number {part_number} excluída com sucesso",
+            "part_number_excluido": part_number,
+            "linhas_afetadas": len(response.data) if response.data else 0
+        }
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions (como 404)
+        raise
+    except Exception as e:
+        error_message = str(e)
+        print(f"Erro ao excluir peça: {error_message}")
+        raise HTTPException(status_code=500, detail=f"Erro ao excluir peça: {error_message}")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

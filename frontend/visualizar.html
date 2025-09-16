@@ -42,9 +42,34 @@
     <!-- Sistema de Notificações Toast -->
     <div id="toastContainer" class="toast-container"></div>
     
+    <!-- Modal de Confirmação para Exclusão de Linha -->
+    <div id="deleteRowModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl p-8 max-w-md mx-4 shadow-2xl">
+            <div class="text-center">
+                <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                    <i class="fas fa-exclamation-triangle text-red-600 text-2xl"></i>
+                </div>
+                <h3 class="text-xl font-semibold text-gray-900 mb-2">Confirmar Exclusão</h3>
+                <p class="text-gray-600 mb-6">
+                    Você está prestes a excluir a linha inteira da peça <strong id="deletePartNumber"></strong>.
+                    <br><br>
+                    <span class="text-red-600 font-medium">Esta ação não pode ser desfeita!</span>
+                </p>
+                <div class="flex gap-4 justify-center">
+                    <button id="cancelDeleteBtn" class="px-6 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors">
+                        <i class="fas fa-times mr-2"></i>Cancelar
+                    </button>
+                    <button id="confirmDeleteBtn" class="px-6 py-3 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600 transition-colors">
+                        <i class="fas fa-trash mr-2"></i>Excluir Linha
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Conteúdo principal com z-index para ficar sobre o fundo -->
     <div class="relative z-10">
-        <div class="container mx-auto px-4 py-8 max-w-10xl">
+        <div class="container mx-auto px-2 py-6 max-w-full">
         <!-- Header com Navegação -->
         <header class="text-center mb-8">
             <div class="flex items-center justify-between mb-6">
@@ -60,7 +85,7 @@
         </header>
 
         <!-- Status da API -->
-        <div class="bg-white rounded-2xl p-6 mb-6 shadow-xl mx-auto max-w-6xl">
+        <div class="bg-white rounded-2xl p-6 mb-6 shadow-xl mx-auto max-w-full">
             <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
                 <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-3">
                     <i class="fas fa-server text-primary-500"></i>Status da API
@@ -76,7 +101,7 @@
         </div>
 
         <!-- Filtros de Busca -->
-        <div class="bg-white rounded-2xl p-6 mb-6 shadow-xl mx-auto max-w-6xl">
+        <div class="bg-white rounded-2xl p-6 mb-6 shadow-xl mx-auto max-w-full">
             <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-3 mb-6">
                 <i class="fas fa-filter text-primary-500"></i>Filtros de Busca (Opcional)
             </h3>
@@ -118,7 +143,7 @@
                 </div>
             </div>
 
-            <div class="flex flex-col md:flex-row gap-4 justify-center mx-auto max-w-6xl">
+            <div class="flex flex-col md:flex-row gap-4 justify-center mx-auto max-w-full">
                 <button id="searchBtn" class="bg-gradient-to-r from-primary-500 to-primary-600 text-white px-8 py-3 rounded-lg font-medium transition-all duration-300 hover:from-primary-600 hover:to-primary-700 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-3">
                     <i class="fas fa-search"></i>Filtrar
                 </button>
@@ -156,8 +181,8 @@
         <div id="searchResults" class="mb-6"></div>
 
         <!-- Tabela de Resultados -->
-        <div id="resultsContainer" class="bg-white rounded-2xl shadow-xl" style="display: none; width: 100%; height: 100%; padding: 10px;">
-            <div class="p-6 border-b border-gray-200">
+        <div id="resultsContainer" class="bg-white rounded-2xl shadow-xl" style="display: none; width: 100%; height: 100%; padding: 8px;">
+            <div class="p-4 border-b border-gray-200">
                 <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-3">
                     <i class="fas fa-table text-primary-500"></i>Planilha de Peças
                     <span id="resultsCount" class="bg-primary-100 text-primary-800 text-sm font-medium px-3 py-1 rounded-full"></span>
@@ -174,7 +199,9 @@
                     • <strong>Ctrl+Z: Desfaz última alteração (na célula em edição ou globalmente)</strong><br>
                     • <strong>ESC: Cancela edição e restaura valor original</strong><br>
                     • <strong>Histórico: Mantém até 10 alterações por célula e 50 globalmente</strong><br>
-                    • <strong>📅 Review Date: Atualizado automaticamente para o timestamp atual (data e hora) sempre que qualquer célula da linha for modificada</strong>
+                    • <strong>📅 Review Date: Atualizado automaticamente para o timestamp atual (data e hora) sempre que qualquer célula da linha for modificada</strong><br>
+                    • <strong>🔒 Part Number (1ª coluna): Não editável, mas pode ser selecionada para cópia</strong><br>
+                    • <strong>🗑️ Delete na 1ª coluna: Exclui a linha inteira com confirmação</strong>
                 </div>
             </div>
             
@@ -190,7 +217,7 @@
             </div>
 
             <!-- Paginação -->
-            <div id="pagination" class="p-6 border-t border-gray-200 flex items-center justify-between">
+            <div id="pagination" class="p-4 border-t border-gray-200 flex items-center justify-between">
                 <div class="text-sm text-gray-700">
                     Mostrando <span id="showingStart">0</span> a <span id="showingEnd">0</span> de <span id="totalResults">0</span> resultados
                 </div>
@@ -228,7 +255,7 @@
             }
             
             #excelTable th {
-                padding: 12px 16px;
+                padding: 8px 12px;
                 text-align: left;
                 font-weight: 600;
                 border: 1px solid #e5e7eb;
@@ -240,9 +267,9 @@
             }
             
             #excelTable td {
-                padding: 12px 16px;
+                padding: 8px 12px;
                 border: 1px solid #e5e7eb;
-                min-height: 48px;
+                min-height: 40px;
                 vertical-align: middle;
                 cursor: pointer;
                 transition: all 0.2s ease;
@@ -265,7 +292,7 @@
                 border: 2px solid #f59e0b;
                 padding: 0;
                 position: relative;
-                min-height: 120px;
+                min-height: 40px;
                 vertical-align: top;
                 z-index: 100;
                 overflow: visible;
@@ -318,11 +345,11 @@
                 background: transparent;
                 font-size: 14px;
                 font-family: inherit;
-                padding: 12px 16px;
+                padding: 8px 12px;
                 margin: 0;
                 box-sizing: border-box;
                 display: block;
-                min-height: 120px;
+                min-height: 40px;
                 line-height: 1.4;
                 vertical-align: top;
                 white-space: normal;
@@ -595,6 +622,31 @@
                 text-align: center;
                 font-weight: 600;
                 background-color: #f8fafc;
+                cursor: pointer; /* Manter cursor de ponteiro para indicar que pode ser selecionada */
+                position: relative;
+            }
+            
+            /* Estilo especial para primeira coluna - indicar que não é editável */
+            #excelTable td:nth-child(1) {
+                background-color: #f1f5f9 !important;
+                border-left: 3px solid #94a3b8;
+                color: #475569;
+            }
+            
+            #excelTable td:nth-child(1):hover {
+                background-color: #e2e8f0 !important;
+                border-left-color: #64748b;
+            }
+            
+            /* Adicionar ícone de bloqueio sutil na primeira coluna */
+            #excelTable td:nth-child(1)::after {
+                content: '🔒';
+                position: absolute;
+                top: 2px;
+                right: 2px;
+                font-size: 10px;
+                opacity: 0.5;
+                pointer-events: none;
             }
             
             #excelTable th:nth-child(3), /* Description */
@@ -680,7 +732,8 @@
             editHistory: new Map(), // Histórico de edições por célula
             maxHistorySize: 10, // Máximo de alterações por célula
             globalEditHistory: [], // Histórico global de todas as alterações
-            maxGlobalHistorySize: 50 // Máximo de alterações globais
+            maxGlobalHistorySize: 50, // Máximo de alterações globais
+            pendingDeleteRow: null // Linha pendente para exclusão
         };
 
         // Elementos do DOM
@@ -703,7 +756,11 @@
             prevPage: document.getElementById('prevPage'),
             nextPage: document.getElementById('nextPage'),
             loadingMessage: document.getElementById('loadingMessage'),
-            toastContainer: document.getElementById('toastContainer')
+            toastContainer: document.getElementById('toastContainer'),
+            deleteRowModal: document.getElementById('deleteRowModal'),
+            deletePartNumber: document.getElementById('deletePartNumber'),
+            cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
+            confirmDeleteBtn: document.getElementById('confirmDeleteBtn')
         };
 
         // Inicialização da aplicação
@@ -722,6 +779,17 @@
             elements.exportBtn.addEventListener('click', exportResults);
             elements.prevPage.addEventListener('click', () => changePage(-1));
             elements.nextPage.addEventListener('click', () => changePage(1));
+            
+            // Event listeners para o modal de exclusão
+            elements.cancelDeleteBtn.addEventListener('click', hideDeleteModal);
+            elements.confirmDeleteBtn.addEventListener('click', confirmDeleteRow);
+            
+            // Fechar modal ao clicar fora dele
+            elements.deleteRowModal.addEventListener('click', (e) => {
+                if (e.target === elements.deleteRowModal) {
+                    hideDeleteModal();
+                }
+            });
 
             // Busca com Enter
             document.addEventListener('keypress', function(event) {
@@ -1233,6 +1301,13 @@
             const cell = document.getElementById(cellId);
             if (!cell) return;
             
+            // Verificar se é a primeira coluna (Part Number) - não permitir edição
+            const colIndex = parseInt(cell.getAttribute('data-col'));
+            if (colIndex === 0) {
+                showToast('A primeira coluna (Part Number) não pode ser editada, mas pode ser selecionada para cópia.', 'info');
+                return;
+            }
+            
             // Obter o valor atual da célula (que pode ter sido salvo anteriormente)
             const actualCurrentValue = cell.getAttribute('data-value') || cell.textContent || currentValue;
             
@@ -1600,6 +1675,45 @@
             const lastGlobalEdit = appState.globalEditHistory.pop();
             console.log(`🌍 Desfazendo alteração global:`, lastGlobalEdit);
             
+            // Extrair informações da célula do ID
+            const cellIdParts = lastGlobalEdit.cellId.split('_');
+            if (cellIdParts.length !== 3) {
+                console.error(`❌ ID de célula inválido: ${lastGlobalEdit.cellId}`);
+                return false;
+            }
+            
+            const rowIndex = parseInt(cellIdParts[1]);
+            const colIndex = parseInt(cellIdParts[2]);
+            const targetPage = Math.floor(rowIndex / appState.itemsPerPage) + 1;
+            
+            console.log(`🔍 Informações da célula:`, {
+                'rowIndex': rowIndex,
+                'colIndex': colIndex,
+                'página atual': appState.currentPage,
+                'página alvo': targetPage
+            });
+            
+            // Se não estamos na página correta, navegar para ela
+            if (appState.currentPage !== targetPage) {
+                console.log(`🔄 Navegando para página ${targetPage}`);
+                appState.currentPage = targetPage;
+                displaySearchResults();
+                
+                // Aguardar um pouco para o DOM ser atualizado
+                setTimeout(() => {
+                    applyUndoToCell(lastGlobalEdit);
+                }, 100);
+                return true;
+            } else {
+                // Estamos na página correta, aplicar o desfazer diretamente
+                return applyUndoToCell(lastGlobalEdit);
+            }
+        }
+        
+        // Função auxiliar para aplicar o desfazer a uma célula
+        function applyUndoToCell(lastGlobalEdit) {
+            console.log(`🔧 Aplicando desfazer à célula: ${lastGlobalEdit.cellId}`);
+            
             // Remover também do histórico específico da célula
             if (appState.editHistory.has(lastGlobalEdit.cellId)) {
                 const cellHistory = appState.editHistory.get(lastGlobalEdit.cellId);
@@ -1617,7 +1731,12 @@
             
             // Aplicar a alteração desfeita
             const cell = document.getElementById(lastGlobalEdit.cellId);
+            console.log(`🔍 Procurando célula com ID: ${lastGlobalEdit.cellId}`);
+            console.log(`🔍 Célula encontrada:`, cell ? 'sim' : 'não');
+            
             if (cell) {
+                console.log(`🔍 Célula está em modo de edição:`, cell.classList.contains('editing') ? 'sim' : 'não');
+                
                 if (cell.classList.contains('editing')) {
                     const textarea = cell.querySelector('.excel-input');
                     if (textarea) {
@@ -1625,10 +1744,12 @@
                         textarea.setAttribute('data-original-value', lastGlobalEdit.oldValue);
                         textarea.focus();
                         textarea.select();
+                        console.log(`✅ Valor restaurado no textarea: ${lastGlobalEdit.oldValue}`);
                     }
                 } else {
                     cell.textContent = lastGlobalEdit.oldValue;
                     cell.setAttribute('data-value', lastGlobalEdit.oldValue);
+                    console.log(`✅ Valor restaurado na célula: ${lastGlobalEdit.oldValue}`);
                     
                     // Salvar a alteração desfeita no banco de dados (sem atualizar review_date)
                     saveCellToDatabase(lastGlobalEdit.cellId, lastGlobalEdit.oldValue, true);
@@ -1642,15 +1763,17 @@
                 
                     if (appState.allResults[actualRowIndex] && column) {
                         appState.allResults[actualRowIndex][column] = lastGlobalEdit.oldValue;
+                        console.log(`✅ AppState atualizado: linha ${actualRowIndex}, coluna ${column} = ${lastGlobalEdit.oldValue}`);
                     }
                 } catch (error) {
                     console.warn('Erro ao atualizar appState:', error);
                 }
                 
                 return true;
+            } else {
+                console.error(`❌ Célula não encontrada: ${lastGlobalEdit.cellId}`);
+                return false;
             }
-            
-            return false;
         }
 
         // Função para salvar célula com histórico e atualização automática do review_date
@@ -1843,13 +1966,27 @@
                     }
                 }
                 
-                // Delete para limpar células selecionadas
+                // Delete para limpar células selecionadas ou excluir linha
                 if (e.key === 'Delete') {
                     const selectedCells = document.querySelectorAll('#excelTable td.selected');
                     if (selectedCells.length > 0) {
-                        selectedCells.forEach(cell => {
-                            editCell(cell.id, '');
+                        // Verificar se alguma célula selecionada é da coluna Part Number (índice 0)
+                        const partNumberCells = Array.from(selectedCells).filter(cell => {
+                            const colIndex = parseInt(cell.getAttribute('data-col'));
+                            return colIndex === 0;
                         });
+                        
+                        if (partNumberCells.length > 0) {
+                            // Se há células da coluna Part Number selecionadas, mostrar modal de confirmação
+                            const firstPartNumberCell = partNumberCells[0];
+                            const partNumber = firstPartNumberCell.getAttribute('data-part-number');
+                            showDeleteModal(partNumber, firstPartNumberCell);
+                        } else {
+                            // Se não há células da coluna Part Number, limpar normalmente
+                            selectedCells.forEach(cell => {
+                                editCell(cell.id, '');
+                            });
+                        }
                     }
                 }
                 
@@ -1857,6 +1994,12 @@
                 if (e.key === 'F2') {
                     const selectedCell = document.querySelector('#excelTable td.selected');
                     if (selectedCell) {
+                        // Verificar se é a primeira coluna antes de tentar editar
+                        const colIndex = parseInt(selectedCell.getAttribute('data-col'));
+                        if (colIndex === 0) {
+                            showToast('A primeira coluna (Part Number) não pode ser editada, mas pode ser selecionada para cópia.', 'info');
+                            return;
+                        }
                         const currentValue = selectedCell.getAttribute('data-value');
                         editCell(selectedCell.id, currentValue);
                     }
@@ -2100,6 +2243,11 @@
         // Função para desfazer última alteração (chamada pelo botão)
         function undoLastChange() {
             console.log('🔄 Botão Desfazer clicado');
+            console.log('📊 Estado atual:', {
+                'histórico global': appState.globalEditHistory.length,
+                'células com histórico': appState.editHistory.size,
+                'célula em edição': document.querySelector('#excelTable td.editing') ? 'sim' : 'não'
+            });
             
             // Se houver uma célula em edição, desfazer nela
             const editingCell = document.querySelector('#excelTable td.editing');
@@ -2114,11 +2262,112 @@
             } else {
                 // Se não há célula em edição, desfazer a última alteração global
                 console.log('Desfazendo última alteração global');
+                console.log('📋 Histórico global disponível:', appState.globalEditHistory);
+                
                 if (undoLastGlobalEdit()) {
                     showToast('Última alteração desfeita com sucesso!', 'success');
                 } else {
                     showToast('Nada para desfazer.', 'info');
                 }
+            }
+        }
+
+        // Função para mostrar modal de confirmação de exclusão
+        function showDeleteModal(partNumber, cell) {
+            if (!partNumber || partNumber === 'undefined') {
+                showToast('Part Number não encontrado para exclusão.', 'error');
+                return;
+            }
+            
+            // Armazenar informações da linha para exclusão
+            appState.pendingDeleteRow = {
+                partNumber: partNumber,
+                cell: cell,
+                rowIndex: parseInt(cell.getAttribute('data-row'))
+            };
+            
+            // Atualizar texto do modal
+            elements.deletePartNumber.textContent = partNumber;
+            
+            // Mostrar modal
+            elements.deleteRowModal.classList.remove('hidden');
+            
+            console.log('🗑️ Modal de exclusão mostrado para Part Number:', partNumber);
+        }
+
+        // Função para esconder modal de exclusão
+        function hideDeleteModal() {
+            elements.deleteRowModal.classList.add('hidden');
+            appState.pendingDeleteRow = null;
+            console.log('❌ Modal de exclusão cancelado');
+        }
+
+        // Função para confirmar exclusão da linha
+        async function confirmDeleteRow() {
+            if (!appState.pendingDeleteRow) {
+                showToast('Erro: Nenhuma linha pendente para exclusão.', 'error');
+                return;
+            }
+            
+            const { partNumber, cell, rowIndex } = appState.pendingDeleteRow;
+            
+            try {
+                // Mostrar loading no botão
+                elements.confirmDeleteBtn.disabled = true;
+                elements.confirmDeleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Excluindo...';
+                
+                console.log('🗑️ Excluindo linha com Part Number:', partNumber);
+                
+                // Fazer requisição para excluir a peça
+                const response = await fetch(`${API_BASE_URL}/pecas/part_number/${partNumber}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Erro ao excluir peça');
+                }
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    console.log('✅ Linha excluída com sucesso:', result);
+                    
+                    // Remover a linha dos dados em memória
+                    const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                    if (appState.allResults[actualRowIndex]) {
+                        appState.allResults.splice(actualRowIndex, 1);
+                        appState.totalResults--;
+                        
+                        // Se a página ficou vazia e não é a primeira, voltar uma página
+                        if (appState.currentResults.length === 1 && appState.currentPage > 1) {
+                            appState.currentPage--;
+                        }
+                        
+                        // Atualizar a interface
+                        displaySearchResults();
+                        
+                        showToast(`Peça ${partNumber} excluída com sucesso!`, 'success');
+                    } else {
+                        showToast('Peça excluída do banco, mas erro ao atualizar interface.', 'warning');
+                        // Recarregar todos os itens para garantir consistência
+                        loadAllItems();
+                    }
+                } else {
+                    throw new Error(result.message || 'Erro ao excluir peça');
+                }
+                
+            } catch (error) {
+                console.error('Erro ao excluir linha:', error);
+                showToast(`Erro ao excluir peça: ${error.message}`, 'error');
+            } finally {
+                // Restaurar botão e esconder modal
+                elements.confirmDeleteBtn.disabled = false;
+                elements.confirmDeleteBtn.innerHTML = '<i class="fas fa-trash mr-2"></i>Excluir Linha';
+                hideDeleteModal();
             }
         }
 
