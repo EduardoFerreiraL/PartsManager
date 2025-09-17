@@ -66,16 +66,17 @@ def clean_data_for_supabase(data_list):
     """Limpa e valida dados antes de enviar para o Supabase"""
     cleaned_data = []
     
-    # Definir tipos esperados para cada coluna
+    # Definir tipos esperados para cada coluna (baseado na estrutura da imagem)
     column_types = {
         'id': 'ignore',  # Ignorar coluna ID - deixar o Supabase gerar automaticamente
-        'part_number': 'string',
-        'chinese_description': 'string', 
+        'part_number': 'int8',
+        'chinese_description': 'string',
         'description': 'string',
-        'ncm': 'string',
+        'ncm': 'int8',
+        'origin': 'int2',
         'date_of_creation': 'date',
-        'review_date': 'timestamp',
-        'process': 'string',
+        'review_date': 'date',
+        'requester': 'string',
         'machine': 'string',
         'created_at': 'ignore'  # Ignorar - será gerado automaticamente
     }
@@ -114,13 +115,23 @@ def clean_data_for_supabase(data_list):
                             cleaned_row[key] = None
                 
                 elif expected_type == 'date':
-                    # Tratar datas
+                    # Tratar datas (aceitar formato M/D/YYYY da imagem)
                     if isinstance(value, pd.Timestamp):
                         cleaned_row[key] = value.strftime('%Y-%m-%d') if pd.notna(value) else None
                     elif isinstance(value, str) and value.strip():
-                        # Tentar converter string para data
+                        # Tentar converter string para data (priorizando M/D/YYYY)
                         try:
-                            pd_date = pd.to_datetime(value, errors='coerce')
+                            # Tentar formato M/D/YYYY primeiro (da imagem)
+                            if '/' in value and len(value.split('/')) == 3:
+                                parts = value.split('/')
+                                if len(parts[0]) <= 2 and len(parts[1]) <= 2:  # M/D/YYYY
+                                    pd_date = pd.to_datetime(value, format='%m/%d/%Y', errors='coerce')
+                                else:  # YYYY/MM/DD
+                                    pd_date = pd.to_datetime(value, format='%Y/%m/%d', errors='coerce')
+                            else:
+                                # Tentar parsing automático
+                                pd_date = pd.to_datetime(value, errors='coerce')
+                            
                             cleaned_row[key] = pd_date.strftime('%Y-%m-%d') if pd.notna(pd_date) else None
                         except:
                             cleaned_row[key] = None
@@ -393,15 +404,16 @@ async def upload_excel(file: UploadFile = File(...)):
         if table_structure["status"] == "success" and table_structure["colunas_encontradas"]:
             available_columns = table_structure["colunas_encontradas"]
         else:
-            # Se não conseguir verificar, usar as colunas padrão esperadas
+            # Se não conseguir verificar, usar as colunas padrão esperadas (baseado na estrutura da imagem)
             available_columns = [
                 "part_number",
-                "chinese_description", 
+                "chinese_description",
                 "description",
                 "ncm",
+                "origin",
                 "date_of_creation",
                 "review_date",
-                "process",
+                "requester",
                 "machine"
             ]
         
@@ -631,9 +643,9 @@ def search_pecas(
     try:
         query = supabase.table(TABLE_NAME).select("*")
         
-        # Aplicar filtros usando as colunas reais
+        # Aplicar filtros usando as colunas reais (baseado na estrutura da imagem)
         if part_number:
-            # Para part_number que pode ser bigint, usar igualdade exata
+            # Para part_number que é bigint, usar igualdade exata
             try:
                 # Tentar converter para inteiro primeiro
                 part_number_int = int(part_number)
@@ -646,7 +658,7 @@ def search_pecas(
             query = query.ilike("description", f"%{description}%")
         
         if ncm:
-            # Para NCM que pode ser bigint, usar cast para text
+            # Para NCM que é bigint, usar cast para text
             try:
                 ncm_int = int(ncm)
                 query = query.eq("ncm", ncm_int)
@@ -804,6 +816,131 @@ def check_and_create_table():
             "erro": error_msg
         }
 
+@app.get("/api/debug-structure", summary="Debug da Estrutura")
+def debug_structure():
+    """Endpoint de debug para verificar a estrutura da tabela"""
+    try:
+        print("🔍 Iniciando debug da estrutura...")
+        
+        # Tentar fazer uma consulta simples
+        response = supabase.table(TABLE_NAME).select("*").limit(1).execute()
+        
+        print(f"📊 Resposta do Supabase: {response}")
+        print(f"📊 Dados: {response.data}")
+        
+        if response.data:
+            first_row = response.data[0]
+            columns = list(first_row.keys())
+            
+            print(f"📋 Colunas encontradas: {columns}")
+            
+            return {
+                "status": "success",
+                "tabela": TABLE_NAME,
+                "colunas_encontradas": columns,
+                "total_colunas": len(columns),
+                "exemplo_dados": first_row,
+                "debug_info": {
+                    "response_type": str(type(response)),
+                    "data_type": str(type(response.data)),
+                    "data_length": len(response.data) if response.data else 0
+                }
+            }
+        else:
+            return {
+                "status": "success",
+                "tabela": TABLE_NAME,
+                "colunas_encontradas": [],
+                "total_colunas": 0,
+                "mensagem": "Tabela vazia - não foi possível determinar a estrutura",
+                "debug_info": {
+                    "response_type": str(type(response)),
+                    "data_type": str(type(response.data)),
+                    "data_length": len(response.data) if response.data else 0
+                }
+            }
+            
+    except Exception as e:
+        print(f"❌ Erro no debug: {e}")
+        return {
+            "status": "error",
+            "tabela": TABLE_NAME,
+            "erro": str(e),
+            "debug_info": {
+                "exception_type": str(type(e)),
+                "exception_args": str(e.args)
+            }
+        }
+        
+    except Exception as e:
+        error_msg = str(e)
+        
+        # Se a tabela não existe, tentar criar
+        if "relation" in error_msg.lower() and "does not exist" in error_msg.lower():
+            try:
+                # Criar tabela com a estrutura esperada
+                create_table_sql = f"""
+                CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+                    id SERIAL PRIMARY KEY,
+                    part_number VARCHAR(255),
+                    chinese_description TEXT,
+                    description TEXT,
+                    ncm VARCHAR(100),
+                    date_of_creation DATE,
+                    review_date DATE,
+                    process VARCHAR(255),
+                    machine VARCHAR(255),
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
+                """
+                
+                # Executar SQL via Supabase (se suportado)
+                # Como alternativa, vamos retornar instruções para criar manualmente
+                return {
+                    "status": "warning",
+                    "message": "Tabela não existe. Crie manualmente no Supabase com a estrutura:",
+                    "tabela": TABLE_NAME,
+                    "existe": False,
+                    "sql_para_criar": create_table_sql,
+                    "instrucoes": [
+                        "1. Acesse o painel do Supabase",
+                        "2. Vá para SQL Editor",
+                        "3. Execute o SQL fornecido acima",
+                        "4. Ou crie a tabela via interface gráfica"
+                    ]
+                }
+                
+            except Exception as create_error:
+                return {
+                    "status": "error",
+                    "message": "Erro ao tentar criar tabela",
+                    "tabela": TABLE_NAME,
+                    "existe": False,
+                    "erro": str(create_error),
+                    "sql_para_criar": f"""
+                    CREATE TABLE {TABLE_NAME} (
+                        id SERIAL PRIMARY KEY,
+                        part_number VARCHAR(255),
+                        chinese_description TEXT,
+                        description TEXT,
+                        ncm VARCHAR(100),
+                        date_of_creation DATE,
+                        review_date DATE,
+                        process VARCHAR(255),
+                        machine VARCHAR(255),
+                        created_at TIMESTAMP DEFAULT NOW()
+                    );
+                    """
+                }
+        
+        return {
+            "status": "error",
+            "message": "Erro ao verificar tabela",
+            "tabela": TABLE_NAME,
+            "existe": False,
+            "erro": error_msg
+        }
+
 @app.put("/api/pecas/part_number/{part_number}", summary="Atualizar Peça por Part Number")
 def update_peca_by_part_number(part_number: str, peca_data: dict):
     """Atualiza uma peça específica no banco de dados usando part_number como identificador"""
@@ -814,10 +951,10 @@ def update_peca_by_part_number(part_number: str, peca_data: dict):
         except ValueError:
             part_number_int = part_number
         
-        # Validar dados recebidos
+        # Validar dados recebidos (baseado na estrutura da imagem)
         allowed_fields = {
-            'chinese_description', 'description', 'ncm',
-            'date_of_creation', 'review_date', 'process', 'machine'
+            'chinese_description', 'description', 'ncm', 'origin',
+            'date_of_creation', 'review_date', 'requester', 'machine'
         }
         
         # Filtrar apenas campos permitidos
@@ -825,6 +962,25 @@ def update_peca_by_part_number(part_number: str, peca_data: dict):
         
         if not update_data:
             raise HTTPException(status_code=400, detail="Nenhum campo válido para atualização")
+        
+        # Validar campos obrigatórios (baseado na estrutura da imagem)
+        required_fields = ['description', 'ncm', 'date_of_creation']
+        field_display_names = {
+            'description': 'Descrição',
+            'ncm': 'NCM', 
+            'date_of_creation': 'Data de Criação'
+        }
+        
+        # Verificar se algum campo obrigatório está sendo atualizado para vazio
+        for field in required_fields:
+            if field in update_data:
+                value = update_data[field]
+                if not value or (isinstance(value, str) and value.strip() == ''):
+                    field_name = field_display_names.get(field, field)
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"O campo '{field_name}' não pode ficar vazio"
+                    )
         
         print(f"Atualizando peça com part_number: {part_number_int}")
         print(f"Dados para atualização: {update_data}")

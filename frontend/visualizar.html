@@ -106,39 +106,65 @@
                 <i class="fas fa-filter text-primary-500"></i>Filtros de Busca (Opcional)
             </h3>
             
-            <div class="grid grid-cols-1 md:grid-cols-6 gap-6 mb-6">
-                <div class="space-y-2">
-                    <label for="pnSearch" class="block font-medium text-gray-700">Part Number:</label>
-                    <input type="text" id="pnSearch" placeholder="Digite o Part Number da peça" 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+            <!-- Filtros de Busca - Layout Responsivo -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-3 mb-6">
+                <div class="space-y-1">
+                    <label for="pnSearch" class="block text-xs font-medium text-gray-700">Part Number</label>
+                    <input type="text" id="pnSearch" placeholder="Part Number" 
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
                 </div>
-                <div class="space-y-2">
-                    <label for="descricaoSearch" class="block font-medium text-gray-700">Descrição:</label>
-                    <input type="text" id="descricaoSearch" placeholder="Digite a descrição" 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                <div class="space-y-1">
+                    <label for="descricaoSearch" class="block text-xs font-medium text-gray-700">Descrição</label>
+                    <input type="text" id="descricaoSearch" placeholder="Descrição" 
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
                 </div>
-                <div class="space-y-2">
-                    <label for="ncmSearch" class="block font-medium text-gray-700">NCM:</label>
-                    <input type="text" id="ncmSearch" placeholder="Digite o NCM" 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                <div class="space-y-1">
+                    <label for="chineseDescSearch" class="block text-xs font-medium text-gray-700">Desc. Chinesa</label>
+                    <input type="text" id="chineseDescSearch" placeholder="Desc. Chinesa" 
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
                 </div>
-                <div class="space-y-2">
-                    <label for="dateCreatedSearch" class="block font-medium text-gray-700">Data de Criação:</label>
+                <div class="space-y-1">
+                    <label for="ncmSearch" class="block text-xs font-medium text-gray-700">NCM</label>
+                    <input type="text" id="ncmSearch" placeholder="NCM" 
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                </div>
+                <div class="space-y-1">
+                    <label for="originSearch" class="block text-xs font-medium text-gray-700">Origin</label>
+                    <input type="text" id="originSearch" placeholder="Origin" 
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                </div>
+                <div class="space-y-1">
+                    <label for="dateCreatedSearch" class="block text-xs font-medium text-gray-700">Data Criação</label>
                     <input type="date" id="dateCreatedSearch" 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
                 </div>
-                <div class="space-y-2">
-                    <label for="reviewDateSearch" class="block font-medium text-gray-700">Data de Revisão:</label>
+                <div class="space-y-1">
+                    <label for="reviewDateSearch" class="block text-xs font-medium text-gray-700">Data Revisão</label>
                     <input type="date" id="reviewDateSearch" 
-                           class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
                 </div>
-                <div class="space-y-2">
-                    <label for="limitSearch" class="block font-medium text-gray-700">Itens por Página:</label>
-                    <select id="limitSearch" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
-                        <option value="50">50 itens</option>
-                        <option value="100" selected>100 itens</option>
-                        <option value="200">200 itens</option>
-                        <option value="500">500 itens</option>
+                <div class="space-y-1">
+                    <label for="requesterSearch" class="block text-xs font-medium text-gray-700">Requester</label>
+                    <input type="text" id="requesterSearch" placeholder="Requester" 
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                </div>
+                <div class="space-y-1">
+                    <label for="machineSearch" class="block text-xs font-medium text-gray-700">Machine</label>
+                    <input type="text" id="machineSearch" placeholder="Machine" 
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                </div>
+                <div class="space-y-1">
+                    <label for="addedModifiedSearch" class="block text-xs font-medium text-gray-700">Added/Modified</label>
+                    <input type="text" id="addedModifiedSearch" placeholder="Added/Modified" 
+                           class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                </div>
+                <div class="space-y-1">
+                    <label for="limitSearch" class="block text-xs font-medium text-gray-700">Itens/Página</label>
+                    <select id="limitSearch" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                        <option value="50">50</option>
+                        <option value="100" selected>100</option>
+                        <option value="200">200</option>
+                        <option value="500">500</option>
                     </select>
                 </div>
             </div>
@@ -292,7 +318,8 @@
                 border: 2px solid #f59e0b;
                 padding: 0;
                 position: relative;
-                min-height: 40px;
+                min-height: 100px;
+                height: 100px;
                 vertical-align: top;
                 z-index: 100;
                 overflow: visible;
@@ -349,7 +376,7 @@
                 margin: 0;
                 box-sizing: border-box;
                 display: block;
-                min-height: 40px;
+                min-height: 100px;
                 line-height: 1.4;
                 vertical-align: top;
                 white-space: normal;
@@ -372,7 +399,7 @@
             }
             
             /* Estilos para campos de filtro - garantir copiar e colar */
-            #pnSearch, #descricaoSearch, #ncmSearch, #dateCreatedSearch, #reviewDateSearch, #limitSearch {
+            #pnSearch, #descricaoSearch, #chineseDescSearch, #ncmSearch, #originSearch, #dateCreatedSearch, #reviewDateSearch, #requesterSearch, #machineSearch, #addedModifiedSearch, #limitSearch {
                 user-select: text !important;
                 -webkit-user-select: text !important;
                 -moz-user-select: text !important;
@@ -674,29 +701,43 @@
                 max-width: 120px;
             }
             
-            #excelTable th:nth-child(5), /* Date of Creation */
+            #excelTable th:nth-child(5), /* Origin */
             #excelTable td:nth-child(5) {
-                width: 130px;
-                min-width: 130px;
-                max-width: 130px;
+                width: 120px;
+                min-width: 120px;
+                max-width: 120px;
             }
             
-            #excelTable th:nth-child(6), /* Review Date */
+            #excelTable th:nth-child(6), /* Date of Creation */
             #excelTable td:nth-child(6) {
                 width: 130px;
                 min-width: 130px;
                 max-width: 130px;
             }
             
-            #excelTable th:nth-child(7), /* Process */
+            #excelTable th:nth-child(7), /* Review Date */
             #excelTable td:nth-child(7) {
+                width: 130px;
+                min-width: 130px;
+                max-width: 130px;
+            }
+            
+            #excelTable th:nth-child(8), /* Requester */
+            #excelTable td:nth-child(8) {
                 width: 150px;
                 min-width: 150px;
                 max-width: 150px;
             }
             
-            #excelTable th:nth-child(8), /* Machine */
-            #excelTable td:nth-child(8) {
+            #excelTable th:nth-child(9), /* Machine */
+            #excelTable td:nth-child(9) {
+                width: 150px;
+                min-width: 150px;
+                max-width: 150px;
+            }
+            
+            #excelTable th:nth-child(10), /* Added/modified */
+            #excelTable td:nth-child(10) {
                 width: 150px;
                 min-width: 150px;
                 max-width: 150px;
@@ -796,7 +837,12 @@
                 if (event.key === 'Enter') {
                     if (event.target.id === 'pnSearch' || 
                         event.target.id === 'descricaoSearch' || 
-                        event.target.id === 'ncmSearch') {
+                        event.target.id === 'chineseDescSearch' ||
+                        event.target.id === 'ncmSearch' ||
+                        event.target.id === 'originSearch' ||
+                        event.target.id === 'requesterSearch' ||
+                        event.target.id === 'machineSearch' ||
+                        event.target.id === 'addedModifiedSearch') {
                         handleSearch();
                     }
                 }
@@ -805,10 +851,15 @@
             // Habilitar copiar e colar nos campos de filtro
             const filterInputs = [
                 'pnSearch',
-                'descricaoSearch', 
+                'descricaoSearch',
+                'chineseDescSearch',
                 'ncmSearch',
+                'originSearch',
                 'dateCreatedSearch',
                 'reviewDateSearch',
+                'requesterSearch',
+                'machineSearch',
+                'addedModifiedSearch',
                 'limitSearch'
             ];
             
@@ -850,12 +901,17 @@
         async function handleSearch() {
             const pn = document.getElementById('pnSearch').value.trim();
             const descricao = document.getElementById('descricaoSearch').value.trim();
+            const chineseDesc = document.getElementById('chineseDescSearch').value.trim();
             const ncm = document.getElementById('ncmSearch').value.trim();
+            const origin = document.getElementById('originSearch').value.trim();
             const dateCreated = document.getElementById('dateCreatedSearch').value;
             const reviewDate = document.getElementById('reviewDateSearch').value;
+            const requester = document.getElementById('requesterSearch').value.trim();
+            const machine = document.getElementById('machineSearch').value.trim();
+            const addedModified = document.getElementById('addedModifiedSearch').value.trim();
             const limit = parseInt(document.getElementById('limitSearch').value);
             
-            if (!pn && !descricao && !ncm && !dateCreated && !reviewDate) {
+            if (!pn && !descricao && !chineseDesc && !ncm && !origin && !dateCreated && !reviewDate && !requester && !machine && !addedModified) {
                 // Se não há filtros, carregar todos os itens
                 loadAllItems();
                 return;
@@ -869,9 +925,14 @@
                 const params = new URLSearchParams();
                 if (pn) params.append('part_number', pn);
                 if (descricao) params.append('description', descricao);
+                if (chineseDesc) params.append('chinese_description', chineseDesc);
                 if (ncm) params.append('ncm', ncm);
+                if (origin) params.append('origin', origin);
                 if (dateCreated) params.append('date_of_creation', dateCreated);
                 if (reviewDate) params.append('review_date', reviewDate);
+                if (requester) params.append('requester', requester);
+                if (machine) params.append('machine', machine);
+                if (addedModified) params.append('added_modified', addedModified);
                 params.append('limit', limit);
                 
                 console.log('Parâmetros de busca:', params.toString());
@@ -1065,9 +1126,14 @@
         function clearFilters() {
             document.getElementById('pnSearch').value = '';
             document.getElementById('descricaoSearch').value = '';
+            document.getElementById('chineseDescSearch').value = '';
             document.getElementById('ncmSearch').value = '';
+            document.getElementById('originSearch').value = '';
             document.getElementById('dateCreatedSearch').value = '';
             document.getElementById('reviewDateSearch').value = '';
+            document.getElementById('requesterSearch').value = '';
+            document.getElementById('machineSearch').value = '';
+            document.getElementById('addedModifiedSearch').value = '';
             document.getElementById('limitSearch').value = '100';
             
             // Recarregar todos os itens após limpar filtros
@@ -1194,9 +1260,23 @@
 
         // Sistema de Notificações Toast
         let toastCounter = 0;
+        let lastToastMessage = '';
+        let lastToastTime = 0;
+        const TOAST_DEBOUNCE_TIME = 1000; // 1 segundo de debounce
         
         // Função para mostrar toast
         function showToast(message, type = 'info', duration = 5000) {
+            const now = Date.now();
+            
+            // Verificar se é a mesma mensagem em um curto período (debounce)
+            if (message === lastToastMessage && (now - lastToastTime) < TOAST_DEBOUNCE_TIME) {
+                console.log('🍞 Toast duplicado ignorado:', message);
+                return;
+            }
+            
+            // Atualizar controle de duplicação
+            lastToastMessage = message;
+            lastToastTime = now;
             const toastId = `toast-${++toastCounter}`;
             
             // Definir ícone baseado no tipo
@@ -1317,14 +1397,28 @@
             // Substituir conteúdo da célula
             cell.innerHTML = '';
             cell.appendChild(textarea);
+            
+            // Definir altura inicial mínima
+            textarea.style.height = '100px';
+            
             textarea.focus();
             textarea.select();
             
-            // Ajustar altura automaticamente
+            // Ajustar altura automaticamente baseado no conteúdo
             textarea.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+                // Resetar altura para calcular corretamente
+                this.style.height = '100px';
+                // Ajustar para o conteúdo, mas manter mínimo de 100px
+                const newHeight = Math.max(this.scrollHeight, 100);
+                this.style.height = Math.min(newHeight, 300) + 'px';
             });
+            
+            // Ajustar altura inicial baseada no conteúdo
+            setTimeout(() => {
+                textarea.style.height = '100px';
+                const newHeight = Math.max(textarea.scrollHeight, 100);
+                textarea.style.height = Math.min(newHeight, 300) + 'px';
+            }, 0);
             
             // Eventos do textarea
             textarea.addEventListener('blur', () => saveCell(cellId, textarea.value, actualCurrentValue));
@@ -1763,9 +1857,48 @@
             const cell = document.getElementById(cellId);
             if (!cell) return;
             
+            // Verificar se a célula já está sendo processada para evitar duplicação
+            if (cell.classList.contains('saving')) {
+                console.log('🔄 Célula já está sendo salva, ignorando chamada duplicada');
+                return;
+            }
+            
+            // Marcar célula como sendo salva
+            cell.classList.add('saving');
+            
             // Se não foi passado valor antigo, tentar recuperar
             if (oldValue === undefined || oldValue === null) {
                 oldValue = cell.getAttribute('data-value') || cell.textContent || '';
+            }
+            
+            // Verificar se é um campo obrigatório e se está vazio (baseado na estrutura da imagem)
+            const column = cell.getAttribute('data-column');
+            const requiredFields = ['description', 'ncm', 'date_of_creation'];
+            
+            if (requiredFields.includes(column) && (!newValue || newValue.trim() === '')) {
+                // Campo obrigatório vazio - restaurar valor original e mostrar mensagem
+                showToast(`O campo "${getFieldDisplayName(column)}" não pode ficar vazio!`, 'error');
+                
+                // Restaurar valor original
+                cell.textContent = oldValue;
+                cell.setAttribute('data-value', oldValue);
+                cell.classList.remove('editing');
+                
+                // Atualizar appState com valor original
+                try {
+                    const rowIndex = parseInt(cell.getAttribute('data-row'));
+                    const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                    
+                    if (appState.allResults[actualRowIndex] && column) {
+                        appState.allResults[actualRowIndex][column] = oldValue;
+                    }
+                } catch (updateError) {
+                    console.warn('Erro ao atualizar appState após validação:', updateError);
+                }
+                
+                // Remover marcação de salvamento
+                cell.classList.remove('saving');
+                return; // Não salvar se campo obrigatório estiver vazio
             }
             
             // Se o valor mudou, adicionar ao histórico e salvar no banco
@@ -1786,6 +1919,9 @@
             // Atualizar conteúdo da célula com o novo valor
             cell.textContent = newValue;
             cell.setAttribute('data-value', newValue);
+            
+            // Remover marcação de salvamento
+            cell.classList.remove('saving');
                     
             // Atualizar o valor no appState para manter consistência
             try {
@@ -2202,6 +2338,9 @@
                 cell.textContent = originalValue;
                 cell.setAttribute('data-value', originalValue);
                 
+                // Remover marcação de salvamento
+                cell.classList.remove('saving');
+                
                 // Atualizar appState com valor original
                 try {
                     const rowIndex = parseInt(cell.getAttribute('data-row'));
@@ -2218,6 +2357,20 @@
         }
 
 
+
+        // Função para obter nome amigável do campo (baseado na estrutura da imagem)
+        function getFieldDisplayName(column) {
+            const fieldNames = {
+                'description': 'Descrição',
+                'ncm': 'NCM',
+                'date_of_creation': 'Data de Criação',
+                'chinese_description': 'Descrição Chinesa',
+                'origin': 'Origem',
+                'requester': 'Solicitante',
+                'machine': 'Máquina'
+            };
+            return fieldNames[column] || column;
+        }
 
         // Função para limpar histórico de edições
         function clearEditHistory() {

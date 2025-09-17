@@ -200,9 +200,13 @@
                     </div>
                 </div>
 
-                <!-- Botão de Envio -->
-                <div class="text-center">
-                    <button type="submit" id="submitBtn" class="bg-gradient-to-r from-green-500 to-green-600 text-white px-8 py-4 rounded-lg font-medium text-lg transition-all duration-300 hover:from-green-600 hover:to-green-700 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
+                <!-- Botões de Ação -->
+                <div class="flex gap-4">
+                    <button type="button" onclick="downloadModel()" class="flex-1 bg-blue-500 text-white py-4 px-6 rounded-xl font-semibold text-lg transition-all duration-300 hover:bg-blue-600 hover:shadow-lg hover:-translate-y-0.5 flex items-center justify-center gap-3">
+                        <i class="fas fa-download"></i>
+                        Baixar Modelo
+                    </button>
+                    <button type="submit" id="submitBtn" class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-4 px-6 rounded-lg font-medium text-lg transition-all duration-300 hover:from-green-600 hover:to-green-700 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
                         <i class="fas fa-upload"></i>Enviar Arquivo
                     </button>
                 </div>
@@ -228,16 +232,17 @@
                     </ul>
                 </div>
                 <div>
-                    <h4 class="font-semibold text-gray-800 mb-2">📊 Colunas da Tabela:</h4>
+                    <h4 class="font-semibold text-gray-800 mb-2">📊 Colunas da Tabela (Atualizada):</h4>
                     <ul class="space-y-1 text-sm">
-                        <li>• part_number (Part Number)</li>
-                        <li>• chinese_description (Descrição Chinesa)</li>
-                        <li>• description (Descrição)</li>
-                        <li>• ncm (NCM)</li>
-                        <li>• date_of_creation (Data de Criação)</li>
-                        <li>• review_date (Data de Revisão)</li>
-                        <li>• process (Processo)</li>
-                        <li>• machine (Máquina)</li>
+                        <li>• part_number (Part Number) - Número inteiro</li>
+                        <li>• chinese_description (Descrição Chinesa) - Texto</li>
+                        <li>• description (Descrição) - Texto</li>
+                        <li>• ncm (NCM) - Número inteiro</li>
+                        <li>• origin (Origem) - Número inteiro</li>
+                        <li>• date_of_creation (Data de Criação) - Data</li>
+                        <li>• review_date (Data de Revisão) - Data</li>
+                        <li>• requester (Solicitante) - Texto</li>
+                        <li>• machine (Máquina) - Texto</li>
                     </ul>
                 </div>
             </div>
@@ -245,11 +250,16 @@
             <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <h4 class="font-semibold text-yellow-800 mb-2">⚠️ Instruções Importantes:</h4>
                 <ul class="space-y-1 text-sm text-yellow-700">
+                    <li>• Use o arquivo modelo fornecido como base</li>
+                    <li>• Mantenha os nomes das colunas exatamente como mostrado</li>
+                    <li>• Campos obrigatórios: part_number, description, ncm, date_of_creation</li>
+                    <li>• Formato de data: M/D/YYYY (ex: 2/5/2025) ou YYYY-MM-DD (ex: 2024-01-15)</li>
+                    <li>• part_number e ncm devem ser números inteiros</li>
+                    <li>• origin deve ser um número inteiro (1, 2, 3, etc.)</li>
                     <li>• Verifique se o arquivo não está aberto</li>
                     <li>• Certifique-se de que não há linhas vazias</li>
                     <li>• Dados duplicados serão ignorados</li>
                     <li>• O processo pode levar alguns minutos</li>
-                    <li>• As colunas do Excel devem corresponder aos nomes da tabela</li>
                 </ul>
             </div>
         </div>
@@ -339,6 +349,35 @@
     <script>
         // Configuração da API
         const API_BASE_URL = '/api';
+        
+        // Função para baixar arquivo modelo
+        async function downloadModel() {
+            try {
+                showMessage('Baixando arquivo modelo...', 'info');
+                
+                const response = await fetch(`${API_BASE_URL}/download-model`);
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'modelo_pecas.xlsx';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    showMessage('Arquivo modelo baixado com sucesso!', 'success');
+                } else {
+                    const errorData = await response.json();
+                    showMessage(`Erro ao baixar modelo: ${errorData.detail || 'Erro desconhecido'}`, 'error');
+                }
+            } catch (error) {
+                showMessage('Erro de conexão ao baixar modelo.', 'error');
+                console.error('Erro ao baixar modelo:', error);
+            }
+        }
 
         // Elementos do DOM
         const elements = {
