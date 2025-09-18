@@ -774,7 +774,10 @@
             maxHistorySize: 10, // Máximo de alterações por célula
             globalEditHistory: [], // Histórico global de todas as alterações
             maxGlobalHistorySize: 50, // Máximo de alterações globais
-            pendingDeleteRow: null // Linha pendente para exclusão
+            pendingDeleteRow: null, // Linha pendente para exclusão
+            lastEditedPartNumber: null, // Part number do último item editado
+            sortBy: 'part_number', // Campo de ordenação atual
+            sortOrder: 'asc' // Ordem de classificação (asc/desc)
         };
 
         // Elementos do DOM
@@ -941,9 +944,13 @@
                 const data = await response.json();
                 
                 if (data.status === 'success') {
-                    appState.allResults = data.pecas;
+                    // Ordenar os resultados usando a função genérica
+                    const sortedPecas = sortData(data.pecas, appState.sortBy, appState.sortOrder);
+                    
+                    appState.allResults = sortedPecas;
                     appState.totalResults = data.total_encontrado;
-                    appState.currentPage = 1;
+                    // NÃO resetar para página 1 - manter página atual se possível
+                    // appState.currentPage = 1;
                     appState.itemsPerPage = limit;
                     
                     displaySearchResults();
@@ -967,26 +974,75 @@
         
 
 
+        // Função para ordenar dados de forma consistente
+        function sortData(data, sortBy = 'part_number', sortOrder = 'asc') {
+            console.log(`🔄 Ordenando ${data.length} itens por ${sortBy} em ordem ${sortOrder}`);
+            
+            const sortedData = data.sort((a, b) => {
+                let aValue = a[sortBy];
+                let bValue = b[sortBy];
+                
+                // Tratar valores nulos/undefined
+                if (aValue === null || aValue === undefined) aValue = '';
+                if (bValue === null || bValue === undefined) bValue = '';
+                
+                // Se for número, converter para número
+                if (sortBy === 'part_number' || sortBy === 'ncm') {
+                    aValue = Number(aValue) || 0;
+                    bValue = Number(bValue) || 0;
+                }
+                
+                // Comparar valores
+                let comparison = 0;
+                if (aValue < bValue) comparison = -1;
+                else if (aValue > bValue) comparison = 1;
+                
+                // Aplicar ordem (asc/desc)
+                return sortOrder === 'desc' ? -comparison : comparison;
+            });
+            
+            // Log dos primeiros e últimos itens para verificar ordenação
+            if (sortedData.length > 0) {
+                console.log('📊 Primeiros 3 itens ordenados:', sortedData.slice(0, 3).map(p => ({ 
+                    part_number: p.part_number, 
+                    description: p.description?.substring(0, 30) + '...' 
+                })));
+                if (sortedData.length > 3) {
+                    console.log('📊 Últimos 3 itens ordenados:', sortedData.slice(-3).map(p => ({ 
+                        part_number: p.part_number, 
+                        description: p.description?.substring(0, 30) + '...' 
+                    })));
+                }
+            }
+            
+            return sortedData;
+        }
+
         // Carregar todos os itens automaticamente
         async function loadAllItems() {
             try {
                 showLoading(true);
                 
-                // Usar um limite alto para pegar todos os itens
+                // Usar um limite alto para pegar todos os itens com ordenação consistente
                 const response = await fetch(`${API_BASE_URL}/pecas?limit=10000`);
                 const data = await response.json();
                 
                 if (data.status === 'success') {
-                    appState.allResults = data.pecas;
+                    // Ordenar os dados usando a função genérica
+                    const sortedPecas = sortData(data.pecas, appState.sortBy, appState.sortOrder);
+                    
+                    appState.allResults = sortedPecas;
                     appState.totalResults = data.total_encontrado;
-                    appState.currentPage = 1;
+                    // NÃO resetar para página 1 - manter página atual se possível
+                    // appState.currentPage = 1;
                     appState.itemsPerPage = 100; // Mostrar 100 por página
                     
                     // Debug: verificar estrutura dos dados
-                    console.log('Dados carregados:', {
+                    console.log('Dados carregados e ordenados:', {
                         total: data.total_encontrado,
-                        primeiraPeca: data.pecas[0],
-                        colunas: data.pecas[0] ? Object.keys(data.pecas[0]) : []
+                        primeiraPeca: sortedPecas[0],
+                        colunas: sortedPecas[0] ? Object.keys(sortedPecas[0]) : [],
+                        ordenacao: `${appState.sortBy} ${appState.sortOrder}`
                     });
                     
                     displaySearchResults();
@@ -1022,8 +1078,51 @@
                 return;
             }
 
+            // Verificar se a página atual é válida
+            const maxPage = Math.ceil(appState.allResults.length / appState.itemsPerPage);
+            if (appState.currentPage > maxPage) {
+                appState.currentPage = maxPage;
+                console.log(`⚠️ Página atual (${appState.currentPage}) maior que máximo (${maxPage}), ajustando para ${maxPage}`);
+            }
+            if (appState.currentPage < 1) {
+                appState.currentPage = 1;
+                console.log(`⚠️ Página atual (${appState.currentPage}) menor que 1, ajustando para 1`);
+            }
+
+            // Tentar manter o item editado na mesma posição visual
+            let targetPage = appState.currentPage;
+            if (appState.lastEditedPartNumber) {
+                console.log('🔍 Procurando item editado:', appState.lastEditedPartNumber);
+                console.log('📊 Total de itens na lista:', appState.allResults.length);
+                console.log('📄 Itens por página:', appState.itemsPerPage);
+                console.log('📄 Página atual antes da busca:', appState.currentPage);
+                
+                const editedIndex = appState.allResults.findIndex(peca => 
+                    peca.part_number && peca.part_number.toString() === appState.lastEditedPartNumber
+                );
+                
+                console.log('📍 Índice do item editado encontrado:', editedIndex);
+                
+                if (editedIndex !== -1) {
+                    // Calcular em qual página está o item editado
+                    const newPage = Math.floor(editedIndex / appState.itemsPerPage) + 1;
+                    console.log('📄 Página calculada para o item editado:', newPage);
+                    console.log('📄 Página atual:', appState.currentPage);
+                    
+                    if (newPage !== appState.currentPage) {
+                        targetPage = newPage;
+                        appState.currentPage = newPage;
+                        console.log(`📍 Item editado encontrado na página ${newPage}, ajustando visualização`);
+                    } else {
+                        console.log('✅ Item editado já está na página atual');
+                    }
+                } else {
+                    console.log('❌ Item editado não encontrado na lista');
+                }
+            }
+
             // Calcular paginação
-            const startIndex = (appState.currentPage - 1) * appState.itemsPerPage;
+            const startIndex = (targetPage - 1) * appState.itemsPerPage;
             const endIndex = startIndex + appState.itemsPerPage;
             appState.currentResults = appState.allResults.slice(startIndex, endIndex);
 
@@ -1041,6 +1140,13 @@
             appState.currentResults.forEach((peca, rowIndex) => {
                 const rowClass = rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                 
+                // Destacar o item editado recentemente
+                const isRecentlyEdited = appState.lastEditedPartNumber && 
+                    peca.part_number && 
+                    peca.part_number.toString() === appState.lastEditedPartNumber;
+                
+                const highlightClass = isRecentlyEdited ? 'bg-yellow-50 border-l-4 border-yellow-400' : '';
+                
                 // Debug: verificar estrutura da peça
                 if (rowIndex === 0) {
                     console.log('Estrutura da primeira peça:', peca);
@@ -1048,7 +1154,7 @@
                     console.log('Colunas disponíveis:', columns);
                 }
                 
-                bodyHTML += `<tr class="${rowClass} hover:bg-blue-50 transition-colors">`;
+                bodyHTML += `<tr class="${rowClass} ${highlightClass} hover:bg-blue-50 transition-colors">`;
                 
                 columns.forEach((column, colIndex) => {
                     const value = peca[column];
@@ -1087,6 +1193,15 @@
 
             // Atualizar botões de paginação
             updatePaginationButtons();
+            
+            // Limpar destaque do item editado após 5 segundos
+            if (appState.lastEditedPartNumber) {
+                setTimeout(() => {
+                    appState.lastEditedPartNumber = null;
+                    // Recarregar apenas a visualização para remover o destaque
+                    displaySearchResults();
+                }, 5000);
+            }
         }
 
         // Formatar nome da coluna para exibição
@@ -1124,6 +1239,8 @@
 
         // Limpar filtros
         function clearFilters() {
+            console.log('🧹 Limpando filtros e preservando posição do item editado');
+            
             document.getElementById('pnSearch').value = '';
             document.getElementById('descricaoSearch').value = '';
             document.getElementById('chineseDescSearch').value = '';
@@ -1136,7 +1253,7 @@
             document.getElementById('addedModifiedSearch').value = '';
             document.getElementById('limitSearch').value = '100';
             
-            // Recarregar todos os itens após limpar filtros
+            // Recarregar todos os itens após limpar filtros, mas preservando a posição
             loadAllItems();
         }
 
@@ -1869,6 +1986,13 @@
             // Se não foi passado valor antigo, tentar recuperar
             if (oldValue === undefined || oldValue === null) {
                 oldValue = cell.getAttribute('data-value') || cell.textContent || '';
+            }
+            
+            // Rastrear o último item editado para manter posição
+            const partNumber = cell.getAttribute('data-part-number');
+            if (partNumber && partNumber !== 'undefined') {
+                appState.lastEditedPartNumber = partNumber;
+                console.log('📍 Último item editado rastreado:', partNumber);
             }
             
             // Verificar se é um campo obrigatório e se está vazio (baseado na estrutura da imagem)

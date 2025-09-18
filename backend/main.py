@@ -33,12 +33,51 @@ load_dotenv()
 # Inicializa o cliente Supabase usando variáveis de ambiente
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+DIRECT_URL = os.getenv("DIRECT_URL")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise ValueError("Variáveis de ambiente do Supabase não encontradas. Por favor, configure SUPABASE_URL e SUPABASE_KEY no seu arquivo .env.")
 
 # Conecta ao Supabase com as credenciais
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Configuração para conexão direta ao PostgreSQL (se DIRECT_URL estiver disponível)
+def get_direct_connection():
+    """Retorna uma conexão direta ao PostgreSQL usando DIRECT_URL"""
+    if not DIRECT_URL:
+        return None
+    
+    try:
+        import psycopg2
+        return psycopg2.connect(DIRECT_URL)
+    except ImportError:
+        print("⚠️  psycopg2 não instalado. Para usar DIRECT_URL, instale: pip install psycopg2-binary")
+        return None
+    except Exception as e:
+        print(f"⚠️  Erro ao conectar via DIRECT_URL: {e}")
+        return None
+
+def execute_direct_sql(query, params=None):
+    """Executa uma consulta SQL diretamente no PostgreSQL usando DIRECT_URL"""
+    conn = get_direct_connection()
+    if not conn:
+        return None
+    
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(query, params)
+            if query.strip().upper().startswith('SELECT'):
+                columns = [desc[0] for desc in cursor.description]
+                rows = cursor.fetchall()
+                return [dict(zip(columns, row)) for row in rows]
+            else:
+                conn.commit()
+                return {"affected_rows": cursor.rowcount}
+    except Exception as e:
+        print(f"❌ Erro ao executar SQL direto: {e}")
+        return None
+    finally:
+        conn.close()
 
 # Define o nome da tabela no Supabase
 TABLE_NAME = "pecas"
@@ -307,19 +346,106 @@ def health_check():
     try:
         # Testar conexão com o Supabase usando uma coluna que existe
         response = supabase.table(TABLE_NAME).select("part_number").limit(1).execute()
+        
+        # Verificar se DIRECT_URL está configurado
+        direct_url_status = "not_configured"
+        if DIRECT_URL:
+            direct_conn = get_direct_connection()
+            if direct_conn:
+                direct_conn.close()
+                direct_url_status = "available"
+            else:
+                direct_url_status = "error"
+        
         return {
             "status": "healthy",
             "message": "API funcionando e conectada ao banco de dados",
-            "timestamp": pd.Timestamp.now().isoformat()
+            "timestamp": pd.Timestamp.now().isoformat(),
+            "supabase_connection": "ok",
+            "direct_url_status": direct_url_status,
+            "direct_url_configured": bool(DIRECT_URL)
         }
     except Exception as e:
         return {
             "status": "unhealthy",
             "message": f"Erro na conexão com o banco: {str(e)}",
-            "timestamp": pd.Timestamp.now().isoformat()
+            "timestamp": pd.Timestamp.now().isoformat(),
+            "supabase_connection": "error",
+            "direct_url_status": "not_checked",
+            "direct_url_configured": bool(DIRECT_URL)
         }
 
 
+
+@app.get("/api/direct-connection", summary="Testar Conexão Direta")
+def test_direct_connection():
+    """Testa a conexão direta ao PostgreSQL usando DIRECT_URL"""
+    if not DIRECT_URL:
+        return {
+            "status": "error",
+            "message": "DIRECT_URL não configurado no arquivo .env",
+            "direct_url_configured": False
+        }
+    
+    try:
+        # Testar conexão
+        conn = get_direct_connection()
+        if not conn:
+            return {
+                "status": "error",
+                "message": "Não foi possível estabelecer conexão direta",
+                "direct_url_configured": True,
+                "suggestion": "Verifique se psycopg2-binary está instalado: pip install psycopg2-binary"
+            }
+        
+        # Testar consulta simples
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT version()")
+            version = cursor.fetchone()[0]
+        
+        conn.close()
+        
+        return {
+            "status": "success",
+            "message": "Conexão direta funcionando perfeitamente",
+            "direct_url_configured": True,
+            "postgresql_version": version,
+            "connection_type": "Direct PostgreSQL"
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Erro na conexão direta: {str(e)}",
+            "direct_url_configured": True,
+            "error_details": str(e)
+        }
+
+@app.get("/api/direct-query", summary="Executar Consulta SQL Direta")
+def execute_direct_query(sql: str = "SELECT COUNT(*) as total FROM pecas"):
+    """Executa uma consulta SQL diretamente no PostgreSQL"""
+    if not DIRECT_URL:
+        raise HTTPException(status_code=400, detail="DIRECT_URL não configurado")
+    
+    # Validar consulta (apenas SELECT por segurança)
+    sql_upper = sql.strip().upper()
+    if not sql_upper.startswith('SELECT'):
+        raise HTTPException(status_code=400, detail="Apenas consultas SELECT são permitidas")
+    
+    try:
+        result = execute_direct_sql(sql)
+        if result is None:
+            raise HTTPException(status_code=500, detail="Erro ao executar consulta")
+        
+        return {
+            "status": "success",
+            "query": sql,
+            "result": result,
+            "total_rows": len(result) if isinstance(result, list) else 1
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao executar consulta: {str(e)}")
 
 @app.get("/api/stats", summary="Estatísticas do Banco")
 def get_stats():
