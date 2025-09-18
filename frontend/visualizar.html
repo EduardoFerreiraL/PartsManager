@@ -67,6 +67,44 @@
         </div>
     </div>
     
+    <!-- Modal do Histórico de Edições -->
+    <div id="historyModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl p-6 max-w-4xl mx-4 shadow-2xl max-h-[90vh] overflow-hidden">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-semibold text-gray-900 flex items-center gap-3">
+                    <i class="fas fa-history text-purple-500"></i>Histórico de edições
+                </h3>
+                <button id="closeHistoryModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4 text-sm text-gray-600">
+                <p>As últimas 10 alterações realizadas no sistema. Clique em "Voltar" para reverter uma alteração específica.</p>
+            </div>
+            
+            <div class="overflow-y-auto max-h-96 mb-6">
+                <div id="historyList" class="space-y-3">
+                    <!-- Lista de histórico será preenchida dinamicamente -->
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-center">
+                <div class="text-sm text-gray-500">
+                    <span id="historyCount">0</span> alterações encontradas
+                </div>
+                <div class="flex gap-3">
+                    <button id="clearAllHistoryBtn" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm">
+                        <i class="fas fa-trash mr-2"></i>Limpar Tudo
+                    </button>
+                    <button id="closeHistoryModalBtn" class="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm">
+                        <i class="fas fa-times mr-2"></i>Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Conteúdo principal com z-index para ficar sobre o fundo -->
     <div class="relative z-10">
         <div class="container mx-auto px-2 py-6 max-w-full">
@@ -179,14 +217,11 @@
                 <button id="exportBtn" class="bg-green-500 text-white px-8 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-green-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-3">
                     <i class="fas fa-download"></i>Exportar
                 </button>
-                <button onclick="showHistoryInfo()" class="bg-purple-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-purple-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Mostrar informações do histórico de edições">
-                    <i class="fas fa-history"></i>Info do Histórico
+                <button onclick="showHistoryInfo()" class="bg-purple-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-purple-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Mostrar histórico de edições">
+                    <i class="fas fa-history"></i>Histórico de edições
                 </button>
                 <button onclick="clearEditHistory()" class="bg-red-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-red-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Limpar todo o histórico de edições">
                     <i class="fas fa-trash"></i>Limpar Histórico
-                </button>
-                <button onclick="undoLastChange()" class="bg-orange-500 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-orange-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2" title="Desfazer última alteração (Ctrl+Z)">
-                    <i class="fas fa-undo"></i>Desfazer (Ctrl+Z)
                 </button>
 
             </div>
@@ -222,11 +257,8 @@
                     • Ctrl+C: Copia células selecionadas<br>
                     • Delete: Limpa células selecionadas<br>
                     • F2: Edita primeira célula selecionada<br>
-                    • <strong>Ctrl+Z: Desfaz última alteração (na célula em edição ou globalmente)</strong><br>
                     • <strong>ESC: Cancela edição e restaura valor original</strong><br>
-                    • <strong>Histórico: Mantém até 10 alterações por célula e 50 globalmente</strong><br>
-                    • <strong>📅 Review Date: Atualizado automaticamente para o timestamp atual (data e hora) sempre que qualquer célula da linha for modificada</strong><br>
-                    • <strong>🔒 Part Number (1ª coluna): Não editável, mas pode ser selecionada para cópia</strong><br>
+                    • <strong>Histórico: Use "Histórico de edições" para ver e reverter alterações</strong><br>
                     • <strong>🗑️ Delete na 1ª coluna: Exclui a linha inteira com confirmação</strong>
                 </div>
             </div>
@@ -804,7 +836,13 @@
             deleteRowModal: document.getElementById('deleteRowModal'),
             deletePartNumber: document.getElementById('deletePartNumber'),
             cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
-            confirmDeleteBtn: document.getElementById('confirmDeleteBtn')
+            confirmDeleteBtn: document.getElementById('confirmDeleteBtn'),
+            historyModal: document.getElementById('historyModal'),
+            closeHistoryModal: document.getElementById('closeHistoryModal'),
+            closeHistoryModalBtn: document.getElementById('closeHistoryModalBtn'),
+            clearAllHistoryBtn: document.getElementById('clearAllHistoryBtn'),
+            historyList: document.getElementById('historyList'),
+            historyCount: document.getElementById('historyCount')
         };
 
         // Inicialização da aplicação
@@ -828,10 +866,21 @@
             elements.cancelDeleteBtn.addEventListener('click', hideDeleteModal);
             elements.confirmDeleteBtn.addEventListener('click', confirmDeleteRow);
             
+            // Event listeners para o modal de histórico
+            elements.closeHistoryModal.addEventListener('click', hideHistoryModal);
+            elements.closeHistoryModalBtn.addEventListener('click', hideHistoryModal);
+            elements.clearAllHistoryBtn.addEventListener('click', clearAllHistory);
+            
             // Fechar modal ao clicar fora dele
             elements.deleteRowModal.addEventListener('click', (e) => {
                 if (e.target === elements.deleteRowModal) {
                     hideDeleteModal();
+                }
+            });
+            
+            elements.historyModal.addEventListener('click', (e) => {
+                if (e.target === elements.historyModal) {
+                    hideHistoryModal();
                 }
             });
 
@@ -1769,6 +1818,7 @@
             // Adicionar ao histórico global
             appState.globalEditHistory.push({
                 cellId: cellId,
+                timestamp: new Date().toISOString(),
                 ...editEntry
             });
             
@@ -2198,13 +2248,7 @@
                     e.preventDefault();
                 }
                 
-                // Ctrl+Z para desfazer alterações
-                if (e.ctrlKey && e.key === 'z') {
-                    e.stopPropagation();
-                    console.log('🔄 Ctrl+Z detectado - executando desfazer');
-                    undoLastChange();
-                    return; // Importante: retornar para evitar processamento duplo
-                }
+                // Ctrl+Z removido - usar "Histórico de edições" para reverter alterações
                 
                 // ESC para cancelar edição
                 if (e.key === 'Escape') {
@@ -2504,54 +2548,175 @@
             showToast('Histórico de edições limpo com sucesso!', 'success');
         }
 
-        // Função para mostrar informações do histórico
+        // Função para mostrar modal do histórico de edições
         function showHistoryInfo() {
-            const cellHistoryCount = appState.editHistory.size;
-            const globalHistoryCount = appState.globalEditHistory.length;
+            console.log('📊 Abrindo histórico de edições');
+            populateHistoryModal();
+            elements.historyModal.classList.remove('hidden');
+        }
+        
+        // Função para preencher o modal com o histórico
+        function populateHistoryModal() {
+            const globalHistory = appState.globalEditHistory;
+            const historyList = elements.historyList;
+            const historyCount = elements.historyCount;
             
-            console.log('📊 Informações do Histórico:');
-            console.log(`   - Células com histórico: ${cellHistoryCount}`);
-            console.log(`   - Total de alterações globais: ${globalHistoryCount}`);
+            // Limpar lista anterior
+            historyList.innerHTML = '';
             
-            if (globalHistoryCount > 0) {
-                const lastEdit = appState.globalEditHistory[globalHistoryCount - 1];
-                console.log(`   - Última alteração: ${lastEdit.cellId} (${lastEdit.oldValue} → ${lastEdit.newValue})`);
+            // Pegar as últimas 10 alterações (mais recentes primeiro)
+            const recentHistory = globalHistory.slice(-10).reverse();
+            
+            if (recentHistory.length === 0) {
+                historyList.innerHTML = `
+                    <div class="text-center py-8 text-gray-500">
+                        <i class="fas fa-history text-4xl mb-4"></i>
+                        <p class="text-lg">Nenhuma alteração encontrada</p>
+                        <p class="text-sm">As edições aparecerão aqui conforme você modificar os dados</p>
+                    </div>
+                `;
+                historyCount.textContent = '0';
+                return;
             }
             
-            showToast(`Histórico: ${cellHistoryCount} células, ${globalHistoryCount} alterações globais`, 'info');
+            // Atualizar contador
+            historyCount.textContent = recentHistory.length;
+            
+            // Criar itens do histórico
+            recentHistory.forEach((edit, index) => {
+                const historyItem = createHistoryItem(edit, index);
+                historyList.appendChild(historyItem);
+            });
+        }
+        
+        // Função para criar um item do histórico
+        function createHistoryItem(edit, index) {
+            const item = document.createElement('div');
+            item.className = 'bg-gray-50 rounded-lg p-4 border border-gray-200 hover:bg-gray-100 transition-colors';
+            
+            // Extrair informações da célula
+            const cellId = edit.cellId;
+            const cellIdParts = cellId.split('_');
+            const rowIndex = parseInt(cellIdParts[1]);
+            const colIndex = parseInt(cellIdParts[2]);
+            
+            // Obter informações da célula atual
+            const cell = document.getElementById(cellId);
+            const column = cell ? cell.getAttribute('data-column') : 'coluna_desconhecida';
+            const partNumber = cell ? cell.getAttribute('data-part-number') : 'N/A';
+            
+            // Formatar timestamp
+            const timestamp = edit.timestamp ? new Date(edit.timestamp).toLocaleString('pt-BR') : 'Agora';
+            
+            // Formatar valores
+            const oldValue = edit.oldValue || '';
+            const newValue = edit.newValue || '';
+            
+            item.innerHTML = `
+                <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full font-medium">
+                                #${index + 1}
+                            </span>
+                            <span class="text-sm text-gray-500">${timestamp}</span>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <p class="text-sm font-medium text-gray-900">
+                                <i class="fas fa-edit text-blue-500 mr-1"></i>
+                                ${formatColumnName(column)}
+                            </p>
+                            <p class="text-xs text-gray-600">
+                                Part Number: ${partNumber} | Linha: ${rowIndex + 1}, Coluna: ${colIndex + 1}
+                            </p>
+                        </div>
+                        
+                        <div class="bg-white rounded p-3 border">
+                            <div class="flex items-center gap-2 text-sm">
+                                <span class="text-red-600 font-medium">De:</span>
+                                <span class="bg-red-50 text-red-800 px-2 py-1 rounded text-xs">${oldValue}</span>
+                                <i class="fas fa-arrow-right text-gray-400"></i>
+                                <span class="text-green-600 font-medium">Para:</span>
+                                <span class="bg-green-50 text-green-800 px-2 py-1 rounded text-xs">${newValue}</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="ml-4 flex flex-col gap-2">
+                        <button 
+                            onclick="revertToHistoryItem(${appState.globalEditHistory.length - 1 - index})"
+                            class="px-3 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm"
+                            title="Reverter para esta alteração">
+                            <i class="fas fa-undo mr-1"></i>Voltar
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            return item;
+        }
+        
+        // Função para reverter para um item específico do histórico
+        function revertToHistoryItem(historyIndex) {
+            if (historyIndex < 0 || historyIndex >= appState.globalEditHistory.length) {
+                showToast('Índice de histórico inválido', 'error');
+                return;
+            }
+            
+            const edit = appState.globalEditHistory[historyIndex];
+            const cell = document.getElementById(edit.cellId);
+            
+            if (!cell) {
+                showToast('Célula não encontrada. Pode ter sido removida da visualização atual.', 'error');
+                return;
+            }
+            
+            // Reverter o valor
+            cell.textContent = edit.oldValue;
+            cell.setAttribute('data-value', edit.oldValue);
+            
+            // Atualizar no appState
+            try {
+                const rowIndex = parseInt(cell.getAttribute('data-row'));
+                const column = cell.getAttribute('data-column');
+                const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                
+                if (appState.allResults[actualRowIndex] && column) {
+                    appState.allResults[actualRowIndex][column] = edit.oldValue;
+                }
+            } catch (error) {
+                console.warn('Erro ao atualizar appState:', error);
+            }
+            
+            // Salvar no banco de dados
+            saveCellToDatabase(edit.cellId, edit.oldValue, true);
+            
+            // Remover do histórico global (já foi revertido)
+            appState.globalEditHistory.splice(historyIndex, 1);
+            
+            // Atualizar o modal
+            populateHistoryModal();
+            
+            showToast(`Alteração revertida: ${edit.oldValue}`, 'success');
+        }
+        
+        // Função para fechar o modal de histórico
+        function hideHistoryModal() {
+            elements.historyModal.classList.add('hidden');
+        }
+        
+        // Função para limpar todo o histórico
+        function clearAllHistory() {
+            if (confirm('Tem certeza que deseja limpar todo o histórico de edições? Esta ação não pode ser desfeita.')) {
+                appState.globalEditHistory = [];
+                appState.editHistory.clear();
+                populateHistoryModal();
+                showToast('Histórico limpo com sucesso!', 'success');
+            }
         }
 
-        // Função para desfazer última alteração (chamada pelo botão)
-        function undoLastChange() {
-            console.log('🔄 Botão Desfazer clicado');
-            console.log('📊 Estado atual:', {
-                'histórico global': appState.globalEditHistory.length,
-                'células com histórico': appState.editHistory.size,
-                'célula em edição': document.querySelector('#excelTable td.editing') ? 'sim' : 'não'
-            });
-            
-            // Se houver uma célula em edição, desfazer nela
-            const editingCell = document.querySelector('#excelTable td.editing');
-            if (editingCell) {
-                const cellId = editingCell.id;
-                console.log(`Desfazendo alteração na célula em edição: ${cellId}`);
-                if (undoLastEdit(cellId)) {
-                    showToast('Alteração desfeita com sucesso!', 'success');
-                } else {
-                    showToast('Nada para desfazer nesta célula.', 'info');
-                }
-            } else {
-                // Se não há célula em edição, desfazer a última alteração global
-                console.log('Desfazendo última alteração global');
-                console.log('📋 Histórico global disponível:', appState.globalEditHistory);
-                
-                if (undoLastGlobalEdit()) {
-                    showToast('Última alteração desfeita com sucesso!', 'success');
-                } else {
-                    showToast('Nada para desfazer.', 'info');
-                }
-            }
-        }
+        // Função undoLastChange removida - usar "Histórico de edições" para reverter alterações
 
         // Função para mostrar modal de confirmação de exclusão
         function showDeleteModal(partNumber, cell) {
@@ -2651,9 +2816,6 @@
                 hideDeleteModal();
             }
         }
-
-
-
 
     </script>
     </div> <!-- Fechamento da div do conteúdo principal -->
