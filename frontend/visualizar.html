@@ -105,6 +105,115 @@
         </div>
     </div>
     
+    <!-- Modal de Adicionar Item -->
+    <div id="addItemModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-2xl p-6 max-w-4xl mx-4 shadow-2xl max-h-[90vh] overflow-hidden">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-semibold text-gray-900 flex items-center gap-3">
+                    <i class="fas fa-plus text-green-500"></i>Adicionar Novo Item
+                </h3>
+                <button id="closeAddItemModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="mb-4 text-sm text-gray-600">
+                <p>Preencha os campos abaixo para adicionar um novo item. Campos marcados com <span class="text-red-500">*</span> são obrigatórios.</p>
+            </div>
+            
+            <div class="overflow-y-auto max-h-96 mb-6">
+                <form id="addItemForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Part Number (obrigatório) -->
+                    <div class="space-y-1">
+                        <label for="addPartNumber" class="block text-sm font-medium text-gray-700">
+                            Part Number <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="addPartNumber" required
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                    </div>
+                    
+                    <!-- Description (obrigatório) -->
+                    <div class="space-y-1">
+                        <label for="addDescription" class="block text-sm font-medium text-gray-700">
+                            Descrição <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="addDescription" required
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                    </div>
+                    
+                    <!-- Chinese Description (opcional) -->
+                    <div class="space-y-1">
+                        <label for="addChineseDesc" class="block text-sm font-medium text-gray-700">
+                            Descrição Chinesa
+                        </label>
+                        <input type="text" id="addChineseDesc"
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                    </div>
+                    
+                    <!-- NCM (obrigatório) -->
+                    <div class="space-y-1">
+                        <label for="addNCM" class="block text-sm font-medium text-gray-700">
+                            NCM <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="addNCM" required maxlength="8"
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                               placeholder="Apenas números (máx 8 dígitos)">
+                    </div>
+                    
+                    <!-- Origin (obrigatório) -->
+                    <div class="space-y-1">
+                        <label for="addOrigin" class="block text-sm font-medium text-gray-700">
+                            Origin <span class="text-red-500">*</span>
+                        </label>
+                        <input type="text" id="addOrigin" required maxlength="1"
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                               placeholder="Apenas 1 número (0-9)">
+                    </div>
+                    
+                    <!-- Date of Creation (obrigatório, mas com auto-preenchimento) -->
+                    <div class="space-y-1">
+                        <label for="addDateCreation" class="block text-sm font-medium text-gray-700">
+                            Data de Criação <span class="text-red-500">*</span>
+                        </label>
+                        <input type="date" id="addDateCreation"
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                        <p class="text-xs text-blue-600">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Se não preenchido, será usado a data atual
+                        </p>
+                    </div>
+                    
+                    <!-- Requester (opcional) -->
+                    <div class="space-y-1">
+                        <label for="addRequester" class="block text-sm font-medium text-gray-700">
+                            Requester
+                        </label>
+                        <input type="text" id="addRequester"
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                    </div>
+                    
+                    <!-- Machine (opcional) -->
+                    <div class="space-y-1">
+                        <label for="addMachine" class="block text-sm font-medium text-gray-700">
+                            Machine
+                        </label>
+                        <input type="text" id="addMachine"
+                               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                    </div>
+                </form>
+            </div>
+            
+            <div class="flex justify-end gap-3">
+                <button id="cancelAddItemBtn" class="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                    <i class="fas fa-times mr-2"></i>Cancelar
+                </button>
+                <button id="saveAddItemBtn" class="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                    <i class="fas fa-save mr-2"></i>Salvar Item
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Conteúdo principal com z-index para ficar sobre o fundo -->
     <div class="relative z-10">
         <div class="container mx-auto px-2 py-6 max-w-full">
@@ -214,6 +323,9 @@
                 <button id="clearBtn" class="bg-gray-100 text-gray-700 px-8 py-3 rounded-lg font-medium border border-gray-300 transition-all duration-300 hover:bg-gray-200 hover:shadow-md hover:-translate-y-0.5 inline-flex items-center gap-3">
                     <i class="fas fa-times"></i>Limpar Filtros
                 </button>
+                <button id="addItemBtn" class="bg-gradient-to-r from-green-500 to-green-600 text-white px-8 py-3 rounded-lg font-medium transition-all duration-300 hover:from-green-600 hover:to-green-700 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-3">
+                    <i class="fas fa-plus"></i>Adicionar Item
+                </button>
                 <button id="exportBtn" class="bg-green-500 text-white px-8 py-3 rounded-lg font-medium transition-all duration-300 hover:bg-green-600 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-3">
                     <i class="fas fa-download"></i>Exportar
                 </button>
@@ -224,6 +336,13 @@
                     <i class="fas fa-trash"></i>Limpar Histórico
                 </button>
 
+            </div>
+            
+            <!-- Container para sugestões de autocomplete -->
+            <div id="autocompleteContainer" class="hidden absolute z-50 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto w-64">
+                <div id="autocompleteList" class="py-1">
+                    <!-- Sugestões serão inseridas aqui dinamicamente -->
+                </div>
             </div>
             
             <div class="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
@@ -445,6 +564,52 @@
                 -webkit-user-modify: read-write;
                 -moz-user-modify: read-write;
                 -ms-user-modify: read-write;
+            }
+            
+            /* Estilos para autocomplete */
+            #autocompleteContainer {
+                position: absolute;
+                z-index: 1000;
+                background: white;
+                border: 1px solid #d1d5db;
+                border-radius: 0.5rem;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                max-height: 15rem;
+                overflow-y: auto;
+                width: 16rem;
+            }
+            
+            .autocomplete-item {
+                padding: 0.75rem 1rem;
+                cursor: pointer;
+                border-bottom: 1px solid #f3f4f6;
+                transition: background-color 0.2s ease;
+                font-size: 0.875rem;
+                color: #374151;
+            }
+            
+            .autocomplete-item:hover {
+                background-color: #f3f4f6;
+            }
+            
+            .autocomplete-item:last-child {
+                border-bottom: none;
+            }
+            
+            .autocomplete-item.highlighted {
+                background-color: #3b82f6;
+                color: white;
+            }
+            
+            .autocomplete-item .highlight {
+                font-weight: bold;
+                background-color: #fef3c7;
+                color: #92400e;
+            }
+            
+            .autocomplete-item.highlighted .highlight {
+                background-color: #fbbf24;
+                color: #92400e;
             }
             
             /* Estados das células */
@@ -842,7 +1007,13 @@
             closeHistoryModalBtn: document.getElementById('closeHistoryModalBtn'),
             clearAllHistoryBtn: document.getElementById('clearAllHistoryBtn'),
             historyList: document.getElementById('historyList'),
-            historyCount: document.getElementById('historyCount')
+            historyCount: document.getElementById('historyCount'),
+            addItemBtn: document.getElementById('addItemBtn'),
+            addItemModal: document.getElementById('addItemModal'),
+            closeAddItemModal: document.getElementById('closeAddItemModal'),
+            cancelAddItemBtn: document.getElementById('cancelAddItemBtn'),
+            saveAddItemBtn: document.getElementById('saveAddItemBtn'),
+            addItemForm: document.getElementById('addItemForm')
         };
 
         // Inicialização da aplicação
@@ -852,6 +1023,57 @@
             // Carregar todos os itens automaticamente
             loadAllItems();
         });
+
+        // Função para configurar autocomplete para um campo específico
+        function setupAutocompleteForField(fieldId) {
+            const field = document.getElementById(fieldId);
+            if (!field) return;
+            
+            // Event listener para input
+            field.addEventListener('input', (e) => {
+                const query = e.target.value;
+                showSuggestions(fieldId, query);
+            });
+            
+            // Event listener para foco
+            field.addEventListener('focus', (e) => {
+                const query = e.target.value;
+                if (query.length >= 2) {
+                    showSuggestions(fieldId, query);
+                }
+            });
+            
+            // Event listener para teclado
+            field.addEventListener('keydown', (e) => {
+                if (currentAutocompleteField === fieldId) {
+                    switch(e.key) {
+                        case 'ArrowDown':
+                            e.preventDefault();
+                            navigateSuggestions('down');
+                            break;
+                        case 'ArrowUp':
+                            e.preventDefault();
+                            navigateSuggestions('up');
+                            break;
+                        case 'Enter':
+                            e.preventDefault();
+                            selectHighlightedSuggestion();
+                            break;
+                        case 'Escape':
+                            hideSuggestions();
+                            break;
+                    }
+                }
+            });
+            
+            // Event listener para perder foco
+            field.addEventListener('blur', (e) => {
+                // Delay para permitir clique nas sugestões
+                setTimeout(() => {
+                    hideSuggestions();
+                }, 200);
+            });
+        }
 
         // Configuração dos event listeners
         function setupEventListeners() {
@@ -871,6 +1093,12 @@
             elements.closeHistoryModalBtn.addEventListener('click', hideHistoryModal);
             elements.clearAllHistoryBtn.addEventListener('click', clearAllHistory);
             
+            // Event listeners para o modal de adicionar item
+            elements.addItemBtn.addEventListener('click', showAddItemModal);
+            elements.closeAddItemModal.addEventListener('click', hideAddItemModal);
+            elements.cancelAddItemBtn.addEventListener('click', hideAddItemModal);
+            elements.saveAddItemBtn.addEventListener('click', saveNewItem);
+            
             // Fechar modal ao clicar fora dele
             elements.deleteRowModal.addEventListener('click', (e) => {
                 if (e.target === elements.deleteRowModal) {
@@ -881,6 +1109,12 @@
             elements.historyModal.addEventListener('click', (e) => {
                 if (e.target === elements.historyModal) {
                     hideHistoryModal();
+                }
+            });
+            
+            elements.addItemModal.addEventListener('click', (e) => {
+                if (e.target === elements.addItemModal) {
+                    hideAddItemModal();
                 }
             });
 
@@ -919,11 +1153,27 @@
                 const input = document.getElementById(inputId);
                 if (input) {
                     enableCopyPaste(input);
+                    
+                    // Adicionar autocomplete para campos de texto (exceto datas e limite)
+                    if (!['dateCreatedSearch', 'reviewDateSearch', 'limitSearch'].includes(inputId)) {
+                        setupAutocompleteForField(inputId);
+                    }
                 }
             });
             
             // Configurar todos os eventos de teclado em uma única função
             setupAllKeyboardEvents();
+            
+            // Event listener global para fechar autocomplete ao clicar fora
+            document.addEventListener('click', (e) => {
+                const container = document.getElementById('autocompleteContainer');
+                const isClickInsideContainer = container && container.contains(e.target);
+                const isClickOnFilterField = e.target.matches('input[id$="Search"]');
+                
+                if (!isClickInsideContainer && !isClickOnFilterField) {
+                    hideSuggestions();
+                }
+            });
         }
 
         // Verificar status da API
@@ -1524,6 +1774,386 @@
             // Não faz nada no sistema de toast
         }
 
+        // Sistema de Autocomplete para Filtros
+        let currentAutocompleteField = null;
+        let autocompleteData = {};
+        let selectedIndex = -1;
+        
+        // Função para gerar sugestões baseadas nos dados
+        function generateSuggestions(fieldId, query) {
+            if (!appState.allResults || appState.allResults.length === 0) {
+                return [];
+            }
+            
+            const fieldMap = {
+                'pnSearch': 'part_number',
+                'descricaoSearch': 'description',
+                'chineseDescSearch': 'chinese_description',
+                'ncmSearch': 'ncm',
+                'originSearch': 'origin',
+                'requesterSearch': 'requester',
+                'machineSearch': 'machine',
+                'addedModifiedSearch': 'added_modified'
+            };
+            
+            const fieldName = fieldMap[fieldId];
+            if (!fieldName) return [];
+            
+            const suggestions = new Set();
+            const queryLower = query.toLowerCase();
+            
+            appState.allResults.forEach(item => {
+                const value = item[fieldName];
+                if (value && value.toString().toLowerCase().includes(queryLower)) {
+                    suggestions.add(value.toString());
+                }
+            });
+            
+            return Array.from(suggestions).slice(0, 10); // Limitar a 10 sugestões
+        }
+        
+        // Função para destacar texto correspondente
+        function highlightText(text, query) {
+            if (!query) return text;
+            const regex = new RegExp(`(${query})`, 'gi');
+            return text.replace(regex, '<span class="highlight">$1</span>');
+        }
+        
+        // Função para mostrar sugestões
+        function showSuggestions(fieldId, query) {
+            const container = document.getElementById('autocompleteContainer');
+            const list = document.getElementById('autocompleteList');
+            const field = document.getElementById(fieldId);
+            
+            if (!query || query.length < 2) {
+                hideSuggestions();
+                return;
+            }
+            
+            const suggestions = generateSuggestions(fieldId, query);
+            
+            if (suggestions.length === 0) {
+                hideSuggestions();
+                return;
+            }
+            
+            // Limpar lista anterior
+            list.innerHTML = '';
+            
+            // Adicionar sugestões
+            suggestions.forEach((suggestion, index) => {
+                const item = document.createElement('div');
+                item.className = 'autocomplete-item';
+                item.innerHTML = highlightText(suggestion, query);
+                item.dataset.value = suggestion;
+                item.dataset.index = index;
+                
+                item.addEventListener('click', () => {
+                    selectSuggestion(fieldId, suggestion);
+                });
+                
+                list.appendChild(item);
+            });
+            
+            // Posicionar o container
+            const rect = field.getBoundingClientRect();
+            container.style.left = rect.left + 'px';
+            container.style.top = (rect.bottom + 5) + 'px';
+            container.style.width = rect.width + 'px';
+            
+            // Mostrar container
+            container.classList.remove('hidden');
+            currentAutocompleteField = fieldId;
+            selectedIndex = -1;
+        }
+        
+        // Função para esconder sugestões
+        function hideSuggestions() {
+            const container = document.getElementById('autocompleteContainer');
+            container.classList.add('hidden');
+            currentAutocompleteField = null;
+            selectedIndex = -1;
+        }
+        
+        // Função para selecionar uma sugestão
+        function selectSuggestion(fieldId, value) {
+            const field = document.getElementById(fieldId);
+            field.value = value;
+            hideSuggestions();
+            field.focus();
+        }
+        
+        // Função para navegar pelas sugestões com teclado
+        function navigateSuggestions(direction) {
+            const container = document.getElementById('autocompleteContainer');
+            const items = container.querySelectorAll('.autocomplete-item');
+            
+            if (items.length === 0) return;
+            
+            // Remover destaque anterior
+            items.forEach(item => item.classList.remove('highlighted'));
+            
+            if (direction === 'up') {
+                selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : items.length - 1;
+            } else if (direction === 'down') {
+                selectedIndex = selectedIndex < items.length - 1 ? selectedIndex + 1 : 0;
+            }
+            
+            // Destacar item selecionado
+            if (selectedIndex >= 0 && selectedIndex < items.length) {
+                items[selectedIndex].classList.add('highlighted');
+                items[selectedIndex].scrollIntoView({ block: 'nearest' });
+            }
+        }
+        
+        // Função para selecionar sugestão destacada
+        function selectHighlightedSuggestion() {
+            const container = document.getElementById('autocompleteContainer');
+            const highlightedItem = container.querySelector('.autocomplete-item.highlighted');
+            
+            if (highlightedItem && currentAutocompleteField) {
+                const value = highlightedItem.dataset.value;
+                selectSuggestion(currentAutocompleteField, value);
+            }
+        }
+
+        // Funções para o modal de adicionar item
+        function showAddItemModal() {
+            // Preencher data atual no campo de data de criação
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('addDateCreation').value = today;
+            
+            // Limpar formulário
+            elements.addItemForm.reset();
+            document.getElementById('addDateCreation').value = today;
+            
+            // Configurar validação em tempo real
+            setupAddItemValidation();
+            
+            // Mostrar modal
+            elements.addItemModal.classList.remove('hidden');
+            
+            // Focar no primeiro campo
+            document.getElementById('addPartNumber').focus();
+        }
+        
+        function setupAddItemValidation() {
+            // Validação para NCM - apenas números
+            const ncmField = document.getElementById('addNCM');
+            ncmField.addEventListener('keypress', (e) => {
+                if (!/^\d$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                    e.preventDefault();
+                    showToast('NCM deve conter apenas números!', 'warning');
+                }
+            });
+            
+            ncmField.addEventListener('input', function() {
+                const value = this.value.replace(/\D/g, '');
+                if (value.length > 8) {
+                    this.value = value.substring(0, 8);
+                    showToast('NCM deve ter no máximo 8 dígitos!', 'warning');
+                } else {
+                    this.value = value;
+                }
+            });
+            
+            // Validação para Origin - apenas 1 número
+            const originField = document.getElementById('addOrigin');
+            originField.addEventListener('keypress', (e) => {
+                if (!/^\d$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                    e.preventDefault();
+                    showToast('Origin deve conter apenas 1 número!', 'warning');
+                }
+            });
+            
+            originField.addEventListener('input', function() {
+                const value = this.value.replace(/\D/g, '');
+                if (value.length > 1) {
+                    this.value = value.substring(0, 1);
+                    showToast('Origin deve ter apenas 1 número!', 'warning');
+                } else {
+                    this.value = value;
+                }
+            });
+        }
+        
+        function hideAddItemModal() {
+            elements.addItemModal.classList.add('hidden');
+        }
+        
+        function validateAddItemForm() {
+            const partNumber = document.getElementById('addPartNumber').value.trim();
+            const description = document.getElementById('addDescription').value.trim();
+            const ncm = document.getElementById('addNCM').value.trim();
+            const origin = document.getElementById('addOrigin').value.trim();
+            const dateCreation = document.getElementById('addDateCreation').value;
+            
+            // Validar campos obrigatórios
+            if (!partNumber) {
+                showToast('Part Number é obrigatório!', 'error');
+                document.getElementById('addPartNumber').focus();
+                return false;
+            }
+            
+            if (!description) {
+                showToast('Descrição é obrigatória!', 'error');
+                document.getElementById('addDescription').focus();
+                return false;
+            }
+            
+            if (!ncm) {
+                showToast('NCM é obrigatório!', 'error');
+                document.getElementById('addNCM').focus();
+                return false;
+            }
+            
+            if (!origin) {
+                showToast('Origin é obrigatório!', 'error');
+                document.getElementById('addOrigin').focus();
+                return false;
+            }
+            
+            // Validar formato do NCM
+            if (!validateNCM(ncm)) {
+                showToast('NCM deve conter apenas números (máximo 8 dígitos)!', 'error');
+                document.getElementById('addNCM').focus();
+                return false;
+            }
+            
+            // Validar formato do Origin
+            if (!validateOrigin(origin)) {
+                showToast('Origin deve conter apenas 1 número (0-9)!', 'error');
+                document.getElementById('addOrigin').focus();
+                return false;
+            }
+            
+            return true;
+        }
+        
+        async function saveNewItem() {
+            if (!validateAddItemForm()) {
+                return;
+            }
+            
+            try {
+                // Mostrar loading
+                elements.saveAddItemBtn.disabled = true;
+                elements.saveAddItemBtn.innerHTML = '<span class="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>Salvando...';
+                
+                // Coletar dados do formulário
+                const formData = {
+                    part_number: document.getElementById('addPartNumber').value.trim(),
+                    description: document.getElementById('addDescription').value.trim(),
+                    chinese_description: document.getElementById('addChineseDesc').value.trim() || null,
+                    ncm: document.getElementById('addNCM').value.trim(),
+                    origin: document.getElementById('addOrigin').value.trim(),
+                    date_of_creation: document.getElementById('addDateCreation').value || new Date().toISOString().split('T')[0],
+                    requester: document.getElementById('addRequester').value.trim() || null,
+                    machine: document.getElementById('addMachine').value.trim() || null
+                };
+                
+                // Se a data de criação não foi preenchida, usar data atual e mostrar aviso
+                if (!document.getElementById('addDateCreation').value) {
+                    formData.date_of_creation = new Date().toISOString().split('T')[0];
+                    showToast('Data de criação não preenchida. Usando data atual.', 'info');
+                }
+                
+                console.log('Dados do novo item:', formData);
+                
+                // Enviar para API
+                const response = await fetch(`${API_BASE_URL}/pecas`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.status === 'success') {
+                    showToast('Item adicionado com sucesso!', 'success');
+                    hideAddItemModal();
+                    
+                    // Recarregar dados
+                    await loadAllItems();
+                } else {
+                    throw new Error(result.detail || 'Erro ao salvar item');
+                }
+                
+            } catch (error) {
+                console.error('Erro ao salvar item:', error);
+                showToast(`Erro ao salvar item: ${error.message}`, 'error');
+            } finally {
+                // Restaurar botão
+                elements.saveAddItemBtn.disabled = false;
+                elements.saveAddItemBtn.innerHTML = '<i class="fas fa-save mr-2"></i>Salvar Item';
+            }
+        }
+
+        // Funções de validação para diferentes tipos de colunas
+        function validateNCM(value) {
+            // NCM deve conter apenas números e ter 8 dígitos
+            const cleanValue = value.replace(/\D/g, ''); // Remove tudo que não é dígito
+            return cleanValue.length <= 8 && /^\d+$/.test(cleanValue);
+        }
+        
+        function validateOrigin(value) {
+            // Origin deve conter apenas 1 número
+            const cleanValue = value.replace(/\D/g, ''); // Remove tudo que não é dígito
+            return cleanValue.length === 1 && /^\d$/.test(cleanValue);
+        }
+        
+        function validateDate(value) {
+            // Aceita formatos: YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY
+            const dateRegex = /^(\d{4}-\d{2}-\d{2}|\d{2}\/\d{2}\/\d{4}|\d{2}-\d{2}-\d{4})$/;
+            if (!dateRegex.test(value.trim())) return false;
+            
+            // Tentar criar um objeto Date
+            let date;
+            if (value.includes('-')) {
+                if (value.length === 10) { // YYYY-MM-DD
+                    date = new Date(value);
+                } else { // DD-MM-YYYY
+                    const parts = value.split('-');
+                    date = new Date(parts[2], parts[1] - 1, parts[0]);
+                }
+            } else if (value.includes('/')) { // DD/MM/YYYY
+                const parts = value.split('/');
+                date = new Date(parts[2], parts[1] - 1, parts[0]);
+            }
+            
+            return date && !isNaN(date.getTime());
+        }
+        
+        function getColumnValidation(columnName) {
+            switch(columnName) {
+                case 'ncm':
+                    return validateNCM;
+                case 'origin':
+                    return validateOrigin;
+                case 'date_of_creation':
+                case 'review_date':
+                    return validateDate;
+                default:
+                    return null; // Sem validação
+            }
+        }
+        
+        function getColumnTypeMessage(columnName) {
+            switch(columnName) {
+                case 'ncm':
+                    return 'NCM deve conter apenas números (máximo 8 dígitos)';
+                case 'origin':
+                    return 'Origin deve conter apenas 1 número (0-9)';
+                case 'date_of_creation':
+                case 'review_date':
+                    return 'Data deve estar no formato DD/MM/YYYY, DD-MM-YYYY ou YYYY-MM-DD';
+                default:
+                    return 'Formato inválido';
+            }
+        }
+
         // Função para editar célula
         function editCell(cellId, currentValue) {
             const cell = document.getElementById(cellId);
@@ -1570,13 +2200,36 @@
             textarea.focus();
             textarea.select();
             
-            // Ajustar altura automaticamente baseado no conteúdo
+            // Ajustar altura automaticamente baseado no conteúdo e validar entrada
             textarea.addEventListener('input', function() {
                 // Resetar altura para calcular corretamente
                 this.style.height = '100px';
                 // Ajustar para o conteúdo, mas manter mínimo de 100px
                 const newHeight = Math.max(this.scrollHeight, 100);
                 this.style.height = Math.min(newHeight, 300) + 'px';
+                
+                // Aplicar validação em tempo real
+                const column = cell.getAttribute('data-column');
+                const validator = getColumnValidation(column);
+                
+                if (validator) {
+                    const isValid = validator(this.value);
+                    
+                    // Aplicar estilo visual baseado na validação
+                    if (this.value.trim() === '') {
+                        // Campo vazio - remover estilos de validação
+                        this.style.borderColor = '';
+                        this.style.backgroundColor = '';
+                    } else if (isValid) {
+                        // Valor válido - borda verde
+                        this.style.borderColor = '#10b981';
+                        this.style.backgroundColor = '#f0fdf4';
+                    } else {
+                        // Valor inválido - borda vermelha
+                        this.style.borderColor = '#ef4444';
+                        this.style.backgroundColor = '#fef2f2';
+                    }
+                }
             });
             
             // Ajustar altura inicial baseada no conteúdo
@@ -1596,6 +2249,49 @@
                     cancelEdit(cellId, actualCurrentValue);
                 }
             });
+            
+            // Validação específica para coluna NCM - aceitar apenas números
+            const column = cell.getAttribute('data-column');
+            if (column === 'ncm') {
+                textarea.addEventListener('keypress', (e) => {
+                    // Permitir apenas números, backspace, delete, tab, enter, escape
+                    const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+                    if (!allowedKeys.includes(e.key) && !/^\d$/.test(e.key)) {
+                        e.preventDefault();
+                        showToast('NCM deve conter apenas números!', 'warning');
+                    }
+                });
+                
+                // Limitar a 8 dígitos
+                textarea.addEventListener('input', function() {
+                    const value = this.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+                    if (value.length > 8) {
+                        this.value = value.substring(0, 8);
+                        showToast('NCM deve ter no máximo 8 dígitos!', 'warning');
+                    }
+                });
+            }
+            
+            // Validação específica para coluna Origin - aceitar apenas 1 número
+            if (column === 'origin') {
+                textarea.addEventListener('keypress', (e) => {
+                    // Permitir apenas números, backspace, delete, tab, enter, escape
+                    const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+                    if (!allowedKeys.includes(e.key) && !/^\d$/.test(e.key)) {
+                        e.preventDefault();
+                        showToast('Origin deve conter apenas 1 número!', 'warning');
+                    }
+                });
+                
+                // Limitar a 1 dígito
+                textarea.addEventListener('input', function() {
+                    const value = this.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+                    if (value.length > 1) {
+                        this.value = value.substring(0, 1);
+                        showToast('Origin deve ter apenas 1 número!', 'warning');
+                    }
+                });
+            }
             
             // Habilitar copiar e colar
             enableCopyPaste(textarea);
@@ -2073,6 +2769,38 @@
                 // Remover marcação de salvamento
                 cell.classList.remove('saving');
                 return; // Não salvar se campo obrigatório estiver vazio
+            }
+            
+            // Validar tipo de dados para colunas específicas
+            const validator = getColumnValidation(column);
+            if (validator && newValue.trim() !== '') {
+                const isValid = validator(newValue);
+                if (!isValid) {
+                    // Tipo de dados inválido - restaurar valor original e mostrar mensagem
+                    const errorMessage = getColumnTypeMessage(column);
+                    showToast(`Formato inválido: ${errorMessage}`, 'error');
+                    
+                    // Restaurar valor original
+                    cell.textContent = oldValue;
+                    cell.setAttribute('data-value', oldValue);
+                    cell.classList.remove('editing');
+                    
+                    // Atualizar appState com valor original
+                    try {
+                        const rowIndex = parseInt(cell.getAttribute('data-row'));
+                        const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                        
+                        if (appState.allResults[actualRowIndex] && column) {
+                            appState.allResults[actualRowIndex][column] = oldValue;
+                        }
+                    } catch (updateError) {
+                        console.warn('Erro ao atualizar appState após validação de tipo:', updateError);
+                    }
+                    
+                    // Remover marcação de salvamento
+                    cell.classList.remove('saving');
+                    return; // Não salvar se tipo de dados for inválido
+                }
             }
             
             // Se o valor mudou, adicionar ao histórico e salvar no banco
