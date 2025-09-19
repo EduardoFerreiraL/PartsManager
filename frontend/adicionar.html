@@ -148,24 +148,6 @@
             </div>
         </div>
 
-        <!-- Download da Planilha Modelo -->
-        <div class="bg-white rounded-2xl p-6 mb-6 shadow-xl hover:shadow-2xl transition-all duration-300">
-            <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-3 mb-4 text-center justify-center">
-                <i class="fas fa-download text-blue-500"></i>Planilha Modelo
-            </h3>
-            
-            <div class="text-center">
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <i class="fas fa-file-excel text-3xl text-blue-500 mb-3"></i>
-                    <h4 class="text-base font-semibold text-blue-800 mb-2">Planilha Modelo para Preenchimento</h4>
-                    <p class="text-blue-600 mb-3 text-sm">Baixe a planilha modelo com a estrutura correta das colunas</p>
-                    
-                    <button onclick="downloadModelExcel()" class="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 hover:from-blue-600 hover:to-blue-700 hover:shadow-lg hover:-translate-y-0.5 inline-flex items-center gap-2">
-                        <i class="fas fa-download"></i>Baixar Planilha Modelo
-                    </button>
-                </div>
-            </div>
-        </div>
 
         <!-- Upload de Arquivo -->
         <div class="bg-white rounded-2xl p-8 mb-6 shadow-xl hover:shadow-2xl transition-all duration-300">
@@ -218,10 +200,18 @@
 
         <!-- Instruções -->
         <div class="bg-white rounded-2xl p-6 shadow-xl">
-            <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-3 mb-4">
-                <i class="fas fa-info-circle text-blue-500"></i>Instruções para Upload
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-gray-600">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-3">
+                    <i class="fas fa-info-circle text-blue-500"></i>Instruções para Upload
+                </h3>
+                <div class="flex items-center gap-2">
+                    <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer hover:text-gray-800 transition-colors">
+                        <input type="checkbox" id="hideInstructionsToggle" class="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2">
+                        <span>Mostrar instruções</span>
+                    </label>
+                </div>
+            </div>
+            <div id="instructionsSection" class="grid grid-cols-1 md:grid-cols-2 gap-6 text-gray-600" style="display: none;">
                 <div>
                     <h4 class="font-semibold text-gray-800 mb-2">📋 Formato do Arquivo:</h4>
                     <ul class="space-y-1 text-sm">
@@ -247,7 +237,7 @@
                 </div>
             </div>
             
-            <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div id="importantInstructions" class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg" style="display: none;">
                 <h4 class="font-semibold text-yellow-800 mb-2">⚠️ Instruções Importantes:</h4>
                 <ul class="space-y-1 text-sm text-yellow-700">
                     <li>• Use o arquivo modelo fornecido como base</li>
@@ -350,6 +340,21 @@
         // Configuração da API
         const API_BASE_URL = '/api';
         
+        // Função para ocultar/mostrar instruções
+        function toggleInstructions() {
+            const isChecked = elements.hideInstructionsToggle.checked;
+            
+            if (isChecked) {
+                elements.instructionsSection.style.display = 'grid';
+                elements.importantInstructions.style.display = 'block';
+                elements.hideInstructionsToggle.nextElementSibling.textContent = 'Ocultar instruções';
+            } else {
+                elements.instructionsSection.style.display = 'none';
+                elements.importantInstructions.style.display = 'none';
+                elements.hideInstructionsToggle.nextElementSibling.textContent = 'Mostrar instruções';
+            }
+        }
+
         // Função para baixar arquivo modelo
         async function downloadModel() {
             try {
@@ -402,7 +407,11 @@
             successModal: document.getElementById('successModal'),
             successMessage: document.getElementById('successMessage'),
             successItems: document.getElementById('successItems'),
-            successTime: document.getElementById('successTime')
+            successTime: document.getElementById('successTime'),
+            // Elementos para ocultar/mostrar instruções
+            hideInstructionsToggle: document.getElementById('hideInstructionsToggle'),
+            instructionsSection: document.getElementById('instructionsSection'),
+            importantInstructions: document.getElementById('importantInstructions')
         };
 
         // Inicialização da aplicação
@@ -416,6 +425,7 @@
             elements.checkStatusBtn.addEventListener('click', checkApiStatus);
             elements.uploadForm.addEventListener('submit', handleFileUpload);
             elements.fileInput.addEventListener('change', handleFileSelect);
+            elements.hideInstructionsToggle.addEventListener('change', toggleInstructions);
         }
 
         // Verificar status da API
@@ -751,36 +761,6 @@
             messageElement.innerHTML = '';
         }
         
-        // Download da planilha modelo
-        async function downloadModelExcel() {
-            try {
-                showMessage('Baixando planilha modelo...', 'info');
-                
-                const response = await fetch(`${API_BASE_URL}/download-model`);
-                
-                if (response.ok) {
-                    // Criar blob do arquivo
-                    const blob = await response.blob();
-                    
-                    // Criar link de download
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(blob);
-                    link.download = 'model.xlsx';
-                    link.style.visibility = 'hidden';
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    
-                    showMessage('Planilha modelo baixada com sucesso! Agora você pode preenchê-la com seus dados.', 'success');
-                } else {
-                    const errorData = await response.json();
-                    throw new Error(errorData.detail || 'Erro ao baixar planilha modelo');
-                }
-            } catch (error) {
-                showMessage('Erro ao baixar planilha modelo: ' + error.message, 'error');
-                console.error('Erro no download da planilha modelo:', error);
-            }
-        }
         
         // Download da planilha de conflitos
         function downloadConflictsExcel(base64Data, filename) {

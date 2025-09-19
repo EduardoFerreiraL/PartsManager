@@ -363,11 +363,19 @@
         <!-- Tabela de Resultados -->
         <div id="resultsContainer" class="bg-white rounded-2xl shadow-xl" style="display: none; width: 100%; height: 100%; padding: 8px;">
             <div class="p-4 border-b border-gray-200">
-                <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-3">
-                    <i class="fas fa-table text-primary-500"></i>Planilha de Peças
-                    <span id="resultsCount" class="bg-primary-100 text-primary-800 text-sm font-medium px-3 py-1 rounded-full"></span>
-                </h3>
-                <div class="mt-2 text-sm text-gray-600">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-3">
+                        <i class="fas fa-table text-primary-500"></i>Planilha de Peças
+                        <span id="resultsCount" class="bg-primary-100 text-primary-800 text-sm font-medium px-3 py-1 rounded-full"></span>
+                    </h3>
+                    <div class="flex items-center gap-2">
+                        <label class="flex items-center gap-2 text-sm text-gray-600 cursor-pointer hover:text-gray-800 transition-colors">
+                            <input type="checkbox" id="hideInstructionsToggle" class="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 focus:ring-2">
+                            <span>Mostrar instruções</span>
+                        </label>
+                    </div>
+                </div>
+                <div id="instructionsSection" class="mt-2 text-sm text-gray-600" style="display: none;">
                     <i class="fas fa-info-circle mr-1"></i>
                     <strong>Seleção e Edição de Células:</strong><br>
                     • Clique simples: Seleciona uma célula<br>
@@ -1013,7 +1021,9 @@
             closeAddItemModal: document.getElementById('closeAddItemModal'),
             cancelAddItemBtn: document.getElementById('cancelAddItemBtn'),
             saveAddItemBtn: document.getElementById('saveAddItemBtn'),
-            addItemForm: document.getElementById('addItemForm')
+            addItemForm: document.getElementById('addItemForm'),
+            hideInstructionsToggle: document.getElementById('hideInstructionsToggle'),
+            instructionsSection: document.getElementById('instructionsSection')
         };
 
         // Inicialização da aplicação
@@ -1098,6 +1108,9 @@
             elements.closeAddItemModal.addEventListener('click', hideAddItemModal);
             elements.cancelAddItemBtn.addEventListener('click', hideAddItemModal);
             elements.saveAddItemBtn.addEventListener('click', saveNewItem);
+            
+            // Event listener para ocultar/mostrar instruções
+            elements.hideInstructionsToggle.addEventListener('change', toggleInstructions);
             
             // Fechar modal ao clicar fora dele
             elements.deleteRowModal.addEventListener('click', (e) => {
@@ -1914,6 +1927,19 @@
             if (highlightedItem && currentAutocompleteField) {
                 const value = highlightedItem.dataset.value;
                 selectSuggestion(currentAutocompleteField, value);
+            }
+        }
+
+        // Função para ocultar/mostrar instruções
+        function toggleInstructions() {
+            const isChecked = elements.hideInstructionsToggle.checked;
+            
+            if (isChecked) {
+                elements.instructionsSection.style.display = 'block';
+                elements.hideInstructionsToggle.nextElementSibling.textContent = 'Ocultar instruções';
+            } else {
+                elements.instructionsSection.style.display = 'none';
+                elements.hideInstructionsToggle.nextElementSibling.textContent = 'Mostrar instruções';
             }
         }
 
