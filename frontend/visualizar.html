@@ -308,10 +308,10 @@
                 <div class="space-y-1">
                     <label for="limitSearch" class="block text-xs font-medium text-gray-700">Itens/Página</label>
                     <select id="limitSearch" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
-                        <option value="50">50</option>
                         <option value="100" selected>100</option>
                         <option value="200">200</option>
                         <option value="500">500</option>
+                        <option value="1000">1000</option>
                     </select>
                 </div>
             </div>
@@ -981,8 +981,8 @@
             maxGlobalHistorySize: 50, // Máximo de alterações globais
             pendingDeleteRow: null, // Linha pendente para exclusão
             lastEditedPartNumber: null, // Part number do último item editado
-            sortBy: 'part_number', // Campo de ordenação atual
-            sortOrder: 'asc' // Ordem de classificação (asc/desc)
+            sortBy: 'date_of_creation', // Campo de ordenação atual
+            sortOrder: 'desc' // Ordem de classificação (asc/desc)
         };
 
         // Elementos do DOM
@@ -1093,6 +1093,9 @@
             elements.exportBtn.addEventListener('click', exportResults);
             elements.prevPage.addEventListener('click', () => changePage(-1));
             elements.nextPage.addEventListener('click', () => changePage(1));
+            
+            // Event listener para mudança de itens por página
+            document.getElementById('limitSearch').addEventListener('change', handleItemsPerPageChange);
             
             // Event listeners para o modal de exclusão
             elements.cancelDeleteBtn.addEventListener('click', hideDeleteModal);
@@ -1227,8 +1230,38 @@
             const limit = parseInt(document.getElementById('limitSearch').value);
             
             if (!pn && !descricao && !chineseDesc && !ncm && !origin && !dateCreated && !reviewDate && !requester && !machine && !addedModified) {
-                // Se não há filtros, carregar todos os itens
-                loadAllItems();
+                // Se não há filtros, fazer busca com limite padrão
+                try {
+                    showLoading(true);
+                    elements.searchBtn.disabled = true;
+                    elements.searchBtn.innerHTML = '<span class="inline-block w-5 h-5 border-2 border-white border-t-primary-500 rounded-full animate-spin"></span> Buscando...';
+                    
+                    const response = await fetch(`${API_BASE_URL}/pecas?limit=${limit}`);
+                    const data = await response.json();
+                    
+                    if (data.status === 'success') {
+                        const sortedPecas = sortData(data.pecas, appState.sortBy, appState.sortOrder);
+                        appState.allResults = sortedPecas;
+                        appState.totalResults = data.total_encontrado;
+                        appState.itemsPerPage = limit;
+                        
+                        displaySearchResults();
+                        showToast(`${data.total_encontrado} peça(s) carregada(s).`, 'success');
+                    } else {
+                        throw new Error(data.detail || 'Erro ao carregar itens');
+                    }
+                } catch (error) {
+                    let errorMessage = 'Erro ao carregar itens';
+                    if (error.message) {
+                        errorMessage += ': ' + error.message;
+                    }
+                    showToast(errorMessage, 'error');
+                    console.error('Erro ao carregar itens:', error);
+                } finally {
+                    showLoading(false);
+                    elements.searchBtn.disabled = false;
+                    elements.searchBtn.innerHTML = '<i class="fas fa-search"></i> Filtrar';
+                }
                 return;
             }
             
@@ -1302,6 +1335,12 @@
                 if (sortBy === 'part_number' || sortBy === 'ncm') {
                     aValue = Number(aValue) || 0;
                     bValue = Number(bValue) || 0;
+                }
+                
+                // Se for data, converter para objeto Date
+                if (sortBy === 'date_of_creation' || sortBy === 'review_date') {
+                    aValue = aValue ? new Date(aValue) : new Date(0);
+                    bValue = bValue ? new Date(bValue) : new Date(0);
                 }
                 
                 // Comparar valores
@@ -1546,6 +1585,28 @@
             if (newPage >= 1 && newPage <= totalPages) {
                 appState.currentPage = newPage;
                 displaySearchResults();
+            }
+        }
+
+        // Mudar itens por página
+        function handleItemsPerPageChange() {
+            const newItemsPerPage = parseInt(document.getElementById('limitSearch').value);
+            
+            if (newItemsPerPage !== appState.itemsPerPage) {
+                console.log('📄 Mudando itens por página de', appState.itemsPerPage, 'para', newItemsPerPage);
+                
+                // Atualizar o estado
+                appState.itemsPerPage = newItemsPerPage;
+                appState.currentPage = 1; // Voltar para a primeira página
+                
+                // Se há resultados carregados, recarregar a exibição
+                if (appState.allResults && appState.allResults.length > 0) {
+                    displaySearchResults();
+                    updatePaginationInfo();
+                } else {
+                    // Se não há resultados, recarregar todos os itens
+                    loadAllItems();
+                }
             }
         }
 
@@ -2997,8 +3058,21 @@
         // Função consolidada para todos os eventos de teclado
         function setupAllKeyboardEvents() {
             document.addEventListener('keydown', (e) => {
-                // Prevenir comportamentos padrão para teclas especiais
-                if (e.ctrlKey || e.shiftKey || e.key === 'Delete' || e.key === 'F2') {
+                // Prevenir comportamentos padrão apenas para teclas específicas (não CTRL+C)
+                if (e.shiftKey || e.key === 'Delete' || e.key === 'F2') {
+                    e.preventDefault();
+                }
+                
+                // Para CTRL+C, permitir comportamento padrão se não há células selecionadas ou se está em input/textarea
+                if (e.ctrlKey && e.key === 'c') {
+                    const selectedCells = document.querySelectorAll('#excelTable td.selected');
+                    const isInInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
+                    
+                    if (selectedCells.length === 0 || isInInput) {
+                        // Se não há células selecionadas ou está em input/textarea, permitir comportamento padrão do navegador
+                        return;
+                    }
+                    // Se há células selecionadas e não está em input/textarea, processar nossa lógica personalizada
                     e.preventDefault();
                 }
                 
@@ -3015,7 +3089,7 @@
                     return;
                 }
                 
-                // Ctrl+C para copiar células selecionadas
+                // Ctrl+C para copiar células selecionadas (já tratado acima)
                 if (e.ctrlKey && e.key === 'c') {
                     console.log('📋 Ctrl+C detectado');
                     const selectedCells = document.querySelectorAll('#excelTable td.selected');

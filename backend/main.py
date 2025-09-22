@@ -760,9 +760,14 @@ async def analyze_excel(file: UploadFile = File(...)):
 def search_pecas(
     part_number: str = None,
     description: str = None,
+    chinese_description: str = None,
     ncm: str = None,
+    origin: str = None,
     date_of_creation: str = None,
     review_date: str = None,
+    requester: str = None,
+    machine: str = None,
+    added_modified: str = None,
     limit: int = 100
 ):
     """Busca peças com filtros opcionais"""
@@ -783,6 +788,9 @@ def search_pecas(
         if description:
             query = query.ilike("description", f"%{description}%")
         
+        if chinese_description:
+            query = query.ilike("chinese_description", f"%{chinese_description}%")
+        
         if ncm:
             # Para NCM que é bigint, usar cast para text
             try:
@@ -791,11 +799,29 @@ def search_pecas(
             except ValueError:
                 query = query.ilike("ncm::text", f"%{ncm}%")
         
+        if origin:
+            # Para origin que é int2, usar igualdade exata
+            try:
+                origin_int = int(origin)
+                query = query.eq("origin", origin_int)
+            except ValueError:
+                # Se não for número, usar busca de texto (cast para text)
+                query = query.ilike("origin::text", f"%{origin}%")
+        
         if date_of_creation:
             query = query.eq("date_of_creation", date_of_creation)
         
         if review_date:
             query = query.eq("review_date", review_date)
+        
+        if requester:
+            query = query.ilike("requester", f"%{requester}%")
+        
+        if machine:
+            query = query.ilike("machine", f"%{machine}%")
+        
+        if added_modified:
+            query = query.ilike("added_modified", f"%{added_modified}%")
         
         # Limitar resultados
         query = query.limit(limit)
@@ -809,9 +835,14 @@ def search_pecas(
             "filtros_aplicados": {
                 "part_number": part_number,
                 "description": description,
+                "chinese_description": chinese_description,
                 "ncm": ncm,
+                "origin": origin,
                 "date_of_creation": date_of_creation,
-                "review_date": review_date
+                "review_date": review_date,
+                "requester": requester,
+                "machine": machine,
+                "added_modified": added_modified
             }
         }
         
@@ -827,6 +858,67 @@ def search_pecas(
             }
         else:
             raise HTTPException(status_code=500, detail=f"Erro na busca: {error_message}")
+
+@app.post("/api/pecas", summary="Adicionar Nova Peça")
+def add_peca(peca_data: dict):
+    """Adiciona uma nova peça ao banco de dados"""
+    try:
+        # Validar campos obrigatórios
+        required_fields = ['part_number', 'description', 'ncm']
+        for field in required_fields:
+            if not peca_data.get(field):
+                raise HTTPException(status_code=400, detail=f"Campo obrigatório '{field}' não fornecido")
+        
+        # Validar tipos de dados
+        try:
+            # Converter part_number para int
+            peca_data['part_number'] = int(peca_data['part_number'])
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="Part Number deve ser um número")
+        
+        try:
+            # Converter ncm para int
+            peca_data['ncm'] = int(peca_data['ncm'])
+        except (ValueError, TypeError):
+            raise HTTPException(status_code=400, detail="NCM deve ser um número")
+        
+        if 'origin' in peca_data and peca_data['origin']:
+            try:
+                # Converter origin para int
+                peca_data['origin'] = int(peca_data['origin'])
+            except (ValueError, TypeError):
+                raise HTTPException(status_code=400, detail="Origin deve ser um número")
+        
+        # Verificar se part_number já existe
+        existing = supabase.table(TABLE_NAME).select("part_number").eq("part_number", peca_data['part_number']).execute()
+        if existing.data:
+            raise HTTPException(status_code=409, detail=f"Part Number {peca_data['part_number']} já existe no banco de dados")
+        
+        # Limpar dados antes de inserir
+        cleaned_data = clean_data_for_supabase([peca_data])
+        
+        if not cleaned_data:
+            raise HTTPException(status_code=400, detail="Dados inválidos após limpeza")
+        
+        # Inserir no banco
+        response = supabase.table(TABLE_NAME).insert(cleaned_data[0]).execute()
+        
+        if not response.data:
+            raise HTTPException(status_code=500, detail="Erro ao inserir dados no banco")
+        
+        return {
+            "status": "success",
+            "message": "Peça adicionada com sucesso",
+            "peca": response.data[0]
+        }
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions
+        raise
+    except Exception as e:
+        error_message = str(e)
+        print(f"Erro ao adicionar peça: {error_message}")
+        raise HTTPException(status_code=500, detail=f"Erro ao adicionar peça: {error_message}")
 
 
 
