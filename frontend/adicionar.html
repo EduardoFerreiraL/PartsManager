@@ -384,6 +384,34 @@
             }
         }
 
+        // Função para baixar arquivo modelo (versão alternativa usada nos logs de erro)
+        async function downloadModelExcel() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/download-model`);
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'modelo_pecas.xlsx';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    
+                    // Mostrar mensagem de sucesso
+                    showMessage('Arquivo modelo baixado com sucesso!', 'success');
+                } else {
+                    const errorData = await response.json();
+                    showMessage(`Erro ao baixar modelo: ${errorData.detail || 'Erro desconhecido'}`, 'error');
+                }
+            } catch (error) {
+                showMessage('Erro de conexão ao baixar modelo.', 'error');
+                console.error('Erro no download:', error);
+            }
+        }
+
         // Elementos do DOM
         const elements = {
             checkStatusBtn: document.getElementById('checkStatusBtn'),
@@ -617,7 +645,11 @@
             let itemsProcessed = 0;
             let message = 'Arquivo processado com sucesso!';
             
-            if (result.status === 'conflicts_only') {
+            if (result.status === 'validation_error') {
+                // Para erros de validação, mostrar mensagem detalhada
+                showValidationErrors(result);
+                return;
+            } else if (result.status === 'conflicts_only') {
                 // Para conflitos, mostrar mensagem especial e não mostrar modal de sucesso
                 showConflictsMessage(result, result.conflicts_excel);
                 return;
@@ -701,6 +733,151 @@
             const messageElement = elements.uploadMessage;
             messageElement.className = 'mt-6';
             messageElement.innerHTML = '';
+        }
+
+        // Mostrar erros de validação detalhados
+        function showValidationErrors(result) {
+            // Esconder modal de progresso primeiro
+            hideProgressModal();
+            
+            const messageElement = elements.uploadMessage;
+            
+            let html = `
+                <div class="bg-red-50 border border-red-200 rounded-lg p-6">
+                    <div class="flex items-center mb-4">
+                        <i class="fas fa-exclamation-triangle text-red-500 text-2xl mr-3"></i>
+                        <h3 class="text-xl font-semibold text-red-800">Erros de Validação Encontrados</h3>
+                    </div>
+                    <p class="text-red-700 mb-4">${result.message}</p>
+                    
+                    <div class="bg-white p-4 rounded-lg border border-red-200 mb-4">
+                        <h4 class="font-semibold text-gray-800 mb-3">Resumo dos Erros:</h4>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="font-medium">Total de linhas:</span> ${result.total_linhas}
+                            </div>
+                            <div>
+                                <span class="font-medium">Linhas com erro:</span> ${result.resumo_erros.total_erros}
+                            </div>
+                            <div>
+                                <span class="font-medium">Total de erros:</span> ${result.resumo_erros.total_erros}
+                            </div>
+                            <div>
+                                <span class="font-medium">Avisos:</span> ${result.resumo_erros.total_avisos}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="max-h-96 overflow-y-auto">
+                        <h4 class="font-semibold text-gray-800 mb-3">Detalhes dos Erros por Linha:</h4>
+            `;
+            
+            // Mostrar erros por linha
+            result.erros_validacao.forEach(linhaErro => {
+                html += `
+                    <div class="bg-red-100 border border-red-300 rounded-lg p-3 mb-3">
+                        <div class="flex items-center mb-2">
+                            <i class="fas fa-file-alt text-red-600 mr-2"></i>
+                            <span class="font-semibold text-red-800">Linha ${linhaErro.linha}</span>
+                        </div>
+                        <div class="ml-6">
+                `;
+                
+                linhaErro.erros.forEach(erro => {
+                    html += `
+                        <div class="mb-2">
+                            <div class="flex items-start">
+                                <i class="fas fa-times-circle text-red-500 mr-2 mt-1"></i>
+                                <div>
+                                    <span class="font-medium text-red-700">${erro.campo}:</span>
+                                    <span class="text-red-600 ml-1">${erro.problema}</span>
+                                </div>
+                            </div>
+                            <div class="ml-6 mt-1">
+                                <span class="text-sm text-gray-600">
+                                    <i class="fas fa-lightbulb text-yellow-500 mr-1"></i>
+                                    ${erro.sugestao}
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // Mostrar avisos se houver
+            if (result.avisos_validacao && result.avisos_validacao.length > 0) {
+                html += `
+                    <div class="mt-4">
+                        <h4 class="font-semibold text-yellow-800 mb-3">Avisos (não impedem o upload):</h4>
+                `;
+                
+                result.avisos_validacao.forEach(linhaAviso => {
+                    html += `
+                        <div class="bg-yellow-100 border border-yellow-300 rounded-lg p-3 mb-2">
+                            <div class="flex items-center mb-2">
+                                <i class="fas fa-exclamation-circle text-yellow-600 mr-2"></i>
+                                <span class="font-semibold text-yellow-800">Linha ${linhaAviso.linha}</span>
+                            </div>
+                            <div class="ml-6">
+                    `;
+                    
+                    linhaAviso.avisos.forEach(aviso => {
+                        html += `
+                            <div class="mb-1">
+                                <span class="font-medium text-yellow-700">${aviso.campo}:</span>
+                                <span class="text-yellow-600 ml-1">${aviso.problema}</span>
+                                <div class="ml-4 mt-1">
+                                    <span class="text-sm text-gray-600">
+                                        <i class="fas fa-lightbulb text-yellow-500 mr-1"></i>
+                                        ${aviso.sugestao}
+                                    </span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += `</div>`;
+            }
+            
+            html += `
+                    </div>
+                    
+                    <div class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                        <h4 class="font-semibold text-blue-800 mb-2">Como Corrigir:</h4>
+                        <ol class="text-sm text-blue-700 list-decimal list-inside space-y-1">
+                            <li>Abra sua planilha Excel</li>
+                            <li>Corrija os erros indicados acima</li>
+                            <li>Salve o arquivo</li>
+                            <li>Tente fazer o upload novamente</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="mt-4 flex gap-3">
+                        <button onclick="hideUploadMessage()" 
+                                class="bg-gray-500 text-white px-6 py-2 rounded-lg font-medium hover:bg-gray-600 transition-all duration-300">
+                            Fechar
+                        </button>
+                        <button onclick="downloadModelExcel()" 
+                                class="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-all duration-300 inline-flex items-center gap-2">
+                            <i class="fas fa-download"></i>Baixar Planilha Modelo
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            messageElement.innerHTML = html;
+            messageElement.className = 'mt-6';
         }
 
         // Mostrar mensagem de conflitos com opção de download

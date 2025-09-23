@@ -101,6 +101,115 @@ app.add_middleware(
 # Montar arquivos estáticos da pasta frontend
 app.mount("/static", StaticFiles(directory="../frontend"), name="static")
 
+def validate_excel_data(data_list):
+    """Valida dados do Excel e retorna erros detalhados"""
+    errors = []
+    warnings = []
+    
+    # Campos obrigatórios
+    required_fields = ['part_number', 'description', 'ncm']
+    
+    for row_index, row in enumerate(data_list, 1):
+        row_errors = []
+        row_warnings = []
+        
+        # Verificar campos obrigatórios
+        for field in required_fields:
+            value = row.get(field)
+            if not value or (isinstance(value, str) and value.strip() == ''):
+                row_errors.append({
+                    'campo': field,
+                    'problema': 'Campo obrigatório vazio',
+                    'sugestao': f'Preencha o campo {field} na linha {row_index}'
+                })
+        
+        # Validar Part Number
+        if row.get('part_number'):
+            try:
+                pn = int(row['part_number'])
+                if pn <= 0:
+                    row_errors.append({
+                        'campo': 'part_number',
+                        'problema': 'Part Number deve ser um número positivo',
+                        'sugestao': f'Digite um número válido na linha {row_index}'
+                    })
+            except (ValueError, TypeError):
+                row_errors.append({
+                    'campo': 'part_number',
+                    'problema': 'Part Number deve ser um número',
+                    'sugestao': f'Digite apenas números na linha {row_index}'
+                })
+        
+        # Validar NCM
+        if row.get('ncm'):
+            try:
+                ncm = int(row['ncm'])
+                if ncm <= 0 or len(str(ncm)) > 8:
+                    row_errors.append({
+                        'campo': 'ncm',
+                        'problema': 'NCM deve ser um número positivo com máximo 8 dígitos',
+                        'sugestao': f'Digite um NCM válido na linha {row_index}'
+                    })
+            except (ValueError, TypeError):
+                row_errors.append({
+                    'campo': 'ncm',
+                    'problema': 'NCM deve ser um número',
+                    'sugestao': f'Digite apenas números na linha {row_index}'
+                })
+        
+        # Validar Origin
+        if row.get('origin'):
+            try:
+                origin = int(row['origin'])
+                if origin < 0 or origin > 9:
+                    row_errors.append({
+                        'campo': 'origin',
+                        'problema': 'Origin deve ser um número de 0 a 9',
+                        'sugestao': f'Digite um número de 0 a 9 na linha {row_index}'
+                    })
+            except (ValueError, TypeError):
+                row_errors.append({
+                    'campo': 'origin',
+                    'problema': 'Origin deve ser um número',
+                    'sugestao': f'Digite apenas números na linha {row_index}'
+                })
+        
+        # Validar datas
+        if row.get('date_of_creation'):
+            try:
+                pd.to_datetime(row['date_of_creation'])
+            except:
+                row_errors.append({
+                    'campo': 'date_of_creation',
+                    'problema': 'Data de criação inválida',
+                    'sugestao': f'Use o formato DD/MM/AAAA ou AAAA-MM-DD na linha {row_index}'
+                })
+        
+        if row.get('review_date'):
+            try:
+                pd.to_datetime(row['review_date'])
+            except:
+                row_warnings.append({
+                    'campo': 'review_date',
+                    'problema': 'Data de revisão inválida',
+                    'sugestao': f'Use o formato DD/MM/AAAA ou AAAA-MM-DD na linha {row_index}'
+                })
+        
+        # Adicionar erros e avisos da linha
+        if row_errors:
+            errors.append({
+                'linha': row_index,
+                'erros': row_errors
+            })
+        
+        if row_warnings:
+            warnings.append({
+                'linha': row_index,
+                'avisos': row_warnings
+            })
+    
+    return errors, warnings
+
 def clean_data_for_supabase(data_list):
     """Limpa e valida dados antes de enviar para o Supabase"""
     cleaned_data = []
@@ -574,6 +683,25 @@ async def upload_excel(file: UploadFile = File(...)):
         # Converter DataFrame para lista de dicionários
         data_to_insert = df_filtered.to_dict('records')
         
+        # Validar dados antes de processar
+        validation_errors, validation_warnings = validate_excel_data(data_to_insert)
+        
+        # Se há erros de validação, retornar erro detalhado
+        if validation_errors:
+            return {
+                "status": "validation_error",
+                "message": f"Encontrados {len(validation_errors)} erros de validação na planilha",
+                "filename": file.filename,
+                "total_linhas": len(data_to_insert),
+                "erros_validacao": validation_errors,
+                "avisos_validacao": validation_warnings,
+                "resumo_erros": {
+                    "total_erros": len(validation_errors),
+                    "total_avisos": len(validation_warnings),
+                    "linhas_com_erro": [e['linha'] for e in validation_errors]
+                }
+            }
+        
         # Limpar dados antes de inserir usando a função especializada
         cleaned_data = clean_data_for_supabase(data_to_insert)
         
@@ -921,6 +1049,74 @@ def add_peca(peca_data: dict):
         raise HTTPException(status_code=500, detail=f"Erro ao adicionar peça: {error_message}")
 
 
+
+@app.get("/api/test-model-compatibility", summary="Testar Compatibilidade do Modelo")
+def test_model_compatibility():
+    """Testa se o sistema está pronto para receber o arquivo model.xlsx atualizado"""
+    try:
+        # Verificar se o arquivo model.xlsx existe
+        if not os.path.exists("model.xlsx"):
+            return {
+                "status": "error",
+                "message": "Arquivo model.xlsx não encontrado",
+                "ready": False
+            }
+        
+        # Ler o arquivo model.xlsx
+        df = pd.read_excel("model.xlsx", engine='openpyxl')
+        
+        # Verificar estrutura da tabela
+        table_structure = get_table_structure()
+        if table_structure["status"] == "success" and table_structure["colunas_encontradas"]:
+            available_columns = table_structure["colunas_encontradas"]
+        else:
+            available_columns = [
+                "part_number", "chinese_description", "description", "ncm", "origin",
+                "date_of_creation", "review_date", "requester", "machine"
+            ]
+        
+        # Verificar compatibilidade das colunas
+        model_columns = [col.lower() for col in df.columns]
+        compatible_columns = [col for col in model_columns if col in [ac.lower() for ac in available_columns]]
+        incompatible_columns = [col for col in model_columns if col not in [ac.lower() for ac in available_columns]]
+        
+        # Verificar campos obrigatórios
+        required_fields = ['part_number', 'description', 'ncm']
+        missing_required = [field for field in required_fields if field not in model_columns]
+        
+        # Simular validação com dados de exemplo
+        sample_data = df.head(2).to_dict('records')
+        validation_errors, validation_warnings = validate_excel_data(sample_data)
+        
+        return {
+            "status": "success",
+            "ready": len(missing_required) == 0 and len(validation_errors) == 0,
+            "message": "Sistema pronto para receber o arquivo model.xlsx atualizado" if len(missing_required) == 0 and len(validation_errors) == 0 else "Sistema precisa de ajustes",
+            "details": {
+                "model_columns": list(df.columns),
+                "available_columns": available_columns,
+                "compatible_columns": compatible_columns,
+                "incompatible_columns": incompatible_columns,
+                "missing_required": missing_required,
+                "validation_errors": len(validation_errors),
+                "validation_warnings": len(validation_warnings),
+                "sample_data_rows": len(sample_data)
+            },
+            "recommendations": [
+                "✅ Arquivo model.xlsx encontrado" if os.path.exists("model.xlsx") else "❌ Arquivo model.xlsx não encontrado",
+                "✅ Colunas compatíveis" if len(compatible_columns) > 0 else "❌ Nenhuma coluna compatível",
+                "✅ Campos obrigatórios presentes" if len(missing_required) == 0 else f"❌ Campos obrigatórios ausentes: {missing_required}",
+                "✅ Validação passou" if len(validation_errors) == 0 else f"❌ {len(validation_errors)} erros de validação encontrados"
+            ]
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Erro ao testar compatibilidade: {str(e)}",
+            "ready": False,
+            "error_details": str(e)
+        }
 
 @app.get("/api/download-model", summary="Download da Planilha Modelo")
 def download_model_excel():

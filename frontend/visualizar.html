@@ -3058,21 +3058,13 @@
         // Função consolidada para todos os eventos de teclado
         function setupAllKeyboardEvents() {
             document.addEventListener('keydown', (e) => {
-                // Prevenir comportamentos padrão apenas para teclas específicas (não CTRL+C)
+                // Prevenir comportamentos padrão para teclas especiais, mas permitir CTRL+C, CTRL+V, CTRL+A, CTRL+X
                 if (e.shiftKey || e.key === 'Delete' || e.key === 'F2') {
                     e.preventDefault();
                 }
                 
-                // Para CTRL+C, permitir comportamento padrão se não há células selecionadas ou se está em input/textarea
-                if (e.ctrlKey && e.key === 'c') {
-                    const selectedCells = document.querySelectorAll('#excelTable td.selected');
-                    const isInInput = e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA';
-                    
-                    if (selectedCells.length === 0 || isInInput) {
-                        // Se não há células selecionadas ou está em input/textarea, permitir comportamento padrão do navegador
-                        return;
-                    }
-                    // Se há células selecionadas e não está em input/textarea, processar nossa lógica personalizada
+                // Para teclas CTRL, só prevenir se não for uma combinação de copiar/colar/cortar/selecionar
+                if (e.ctrlKey && !['c', 'v', 'x', 'a'].includes(e.key.toLowerCase())) {
                     e.preventDefault();
                 }
                 
@@ -3089,7 +3081,7 @@
                     return;
                 }
                 
-                // Ctrl+C para copiar células selecionadas (já tratado acima)
+                // Ctrl+C para copiar células selecionadas
                 if (e.ctrlKey && e.key === 'c') {
                     console.log('📋 Ctrl+C detectado');
                     const selectedCells = document.querySelectorAll('#excelTable td.selected');
