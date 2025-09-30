@@ -896,10 +896,30 @@ def search_pecas(
     requester: str = None,
     machine: str = None,
     added_modified: str = None,
-    limit: int = 100
+    limit: int = 100,
+    offset: int = 0,
+    order_by: str = "part_number",
+    order_direction: str = "asc"
 ):
-    """Busca peças com filtros opcionais"""
+    """Busca peças com filtros opcionais e paginação otimizada"""
     try:
+        # Validar parâmetros de paginação
+        if limit > 1000:
+            limit = 1000  # Limitar máximo de itens por página
+        if limit < 1:
+            limit = 100   # Limite mínimo
+        if offset < 0:
+            offset = 0    # Offset mínimo
+            
+        # Validar campo de ordenação
+        valid_order_fields = ['part_number', 'description', 'ncm', 'date_of_creation', 'review_date']
+        if order_by not in valid_order_fields:
+            order_by = 'part_number'
+            
+        # Validar direção de ordenação
+        if order_direction.lower() not in ['asc', 'desc']:
+            order_direction = 'asc'
+        
         query = supabase.table(TABLE_NAME).select("*")
         
         # Aplicar filtros usando as colunas reais (baseado na estrutura da imagem)
@@ -951,8 +971,14 @@ def search_pecas(
         if added_modified:
             query = query.ilike("added_modified", f"%{added_modified}%")
         
-        # Limitar resultados
-        query = query.limit(limit)
+        # Aplicar ordenação
+        if order_direction.lower() == "desc":
+            query = query.order(order_by, desc=True)
+        else:
+            query = query.order(order_by, desc=False)
+        
+        # Aplicar paginação
+        query = query.range(offset, offset + limit - 1)
         
         response = query.execute()
         
@@ -960,6 +986,12 @@ def search_pecas(
             "status": "success",
             "pecas": response.data,
             "total_encontrado": len(response.data),
+            "pagination": {
+                "limit": limit,
+                "offset": offset,
+                "current_page": (offset // limit) + 1,
+                "has_next": len(response.data) == limit
+            },
             "filtros_aplicados": {
                 "part_number": part_number,
                 "description": description,
@@ -986,6 +1018,107 @@ def search_pecas(
             }
         else:
             raise HTTPException(status_code=500, detail=f"Erro na busca: {error_message}")
+
+@app.get("/api/pecas/count", summary="Contar Peças com Filtros")
+def count_pecas(
+    part_number: str = None,
+    description: str = None,
+    chinese_description: str = None,
+    ncm: str = None,
+    origin: str = None,
+    date_of_creation: str = None,
+    review_date: str = None,
+    requester: str = None,
+    machine: str = None,
+    added_modified: str = None
+):
+    """Conta o total de peças que correspondem aos filtros aplicados"""
+    try:
+        query = supabase.table(TABLE_NAME).select("part_number", count="exact")
+        
+        # Aplicar os mesmos filtros da busca
+        if part_number:
+            try:
+                part_number_int = int(part_number)
+                query = query.eq("part_number", part_number_int)
+            except ValueError:
+                query = query.ilike("part_number::text", f"%{part_number}%")
+        
+        if description:
+            query = query.ilike("description", f"%{description}%")
+        
+        if chinese_description:
+            query = query.ilike("chinese_description", f"%{chinese_description}%")
+        
+        if ncm:
+            try:
+                ncm_int = int(ncm)
+                query = query.eq("ncm", ncm_int)
+            except ValueError:
+                query = query.ilike("ncm::text", f"%{ncm}%")
+        
+        if origin:
+            try:
+                origin_int = int(origin)
+                query = query.eq("origin", origin_int)
+            except ValueError:
+                query = query.ilike("origin::text", f"%{origin}%")
+        
+        if date_of_creation:
+            query = query.eq("date_of_creation", date_of_creation)
+        
+        if review_date:
+            query = query.eq("review_date", review_date)
+        
+        if requester:
+            query = query.ilike("requester", f"%{requester}%")
+        
+        if machine:
+            query = query.ilike("machine", f"%{machine}%")
+        
+        if added_modified:
+            query = query.ilike("added_modified", f"%{added_modified}%")
+        
+        response = query.execute()
+        
+        return {
+            "status": "success",
+            "total_count": response.count if response.count is not None else 0,
+            "filtros_aplicados": {
+                "part_number": part_number,
+                "description": description,
+                "chinese_description": chinese_description,
+                "ncm": ncm,
+                "origin": origin,
+                "date_of_creation": date_of_creation,
+                "review_date": review_date,
+                "requester": requester,
+                "machine": machine,
+                "added_modified": added_modified
+            }
+        }
+        
+    except Exception as e:
+        error_message = str(e)
+        raise HTTPException(status_code=500, detail=f"Erro ao contar peças: {error_message}")
+
+@app.get("/api/pecas/all", summary="Buscar Todas as Peças")
+def get_all_pecas():
+    """Busca todas as peças sem limitação de quantidade"""
+    try:
+        # Buscar todas as peças sem filtros e sem limite
+        response = supabase.table(TABLE_NAME).select("*").execute()
+        
+        return {
+            "status": "success",
+            "pecas": response.data,
+            "total_encontrado": len(response.data),
+            "filtros_aplicados": "nenhum"
+        }
+        
+    except Exception as e:
+        error_message = str(e)
+        raise HTTPException(status_code=500, detail=f"Erro ao buscar todas as peças: {error_message}")
 
 @app.post("/api/pecas", summary="Adicionar Nova Peça")
 def add_peca(peca_data: dict):
@@ -1228,6 +1361,197 @@ def check_and_create_table():
             "tabela": TABLE_NAME,
             "existe": False,
             "erro": error_msg
+        }
+
+@app.post("/api/optimize-database", summary="Otimizar Banco de Dados")
+def optimize_database():
+    """Cria índices no banco de dados para otimizar consultas com grandes volumes"""
+    try:
+        # Lista de índices recomendados para otimizar consultas
+        indexes_to_create = [
+            {
+                "name": "idx_pecas_part_number",
+                "sql": "CREATE INDEX IF NOT EXISTS idx_pecas_part_number ON pecas(part_number);",
+                "description": "Índice para busca rápida por Part Number"
+            },
+            {
+                "name": "idx_pecas_ncm", 
+                "sql": "CREATE INDEX IF NOT EXISTS idx_pecas_ncm ON pecas(ncm);",
+                "description": "Índice para busca rápida por NCM"
+            },
+            {
+                "name": "idx_pecas_date_creation",
+                "sql": "CREATE INDEX IF NOT EXISTS idx_pecas_date_creation ON pecas(date_of_creation);",
+                "description": "Índice para ordenação por data de criação"
+            },
+            {
+                "name": "idx_pecas_description",
+                "sql": "CREATE INDEX IF NOT EXISTS idx_pecas_description ON pecas USING gin(to_tsvector('portuguese', description));",
+                "description": "Índice de texto completo para descrição"
+            },
+            {
+                "name": "idx_pecas_chinese_description",
+                "sql": "CREATE INDEX IF NOT EXISTS idx_pecas_chinese_description ON pecas USING gin(to_tsvector('simple', chinese_description));",
+                "description": "Índice de texto completo para descrição chinesa"
+            },
+            {
+                "name": "idx_pecas_origin",
+                "sql": "CREATE INDEX IF NOT EXISTS idx_pecas_origin ON pecas(origin);",
+                "description": "Índice para busca por origem"
+            },
+            {
+                "name": "idx_pecas_machine",
+                "sql": "CREATE INDEX IF NOT EXISTS idx_pecas_machine ON pecas(machine);",
+                "description": "Índice para busca por máquina"
+            }
+        ]
+        
+        results = []
+        
+        # Tentar executar via conexão direta se disponível
+        if DIRECT_URL:
+            conn = get_direct_connection()
+            if conn:
+                try:
+                    with conn.cursor() as cursor:
+                        for index_info in indexes_to_create:
+                            try:
+                                cursor.execute(index_info["sql"])
+                                results.append({
+                                    "index": index_info["name"],
+                                    "status": "created",
+                                    "description": index_info["description"]
+                                })
+                            except Exception as e:
+                                results.append({
+                                    "index": index_info["name"],
+                                    "status": "error",
+                                    "description": index_info["description"],
+                                    "error": str(e)
+                                })
+                    conn.commit()
+                    conn.close()
+                    
+                    return {
+                        "status": "success",
+                        "message": "Otimização do banco de dados concluída",
+                        "indexes_created": results,
+                        "total_indexes": len(indexes_to_create),
+                        "successful_indexes": len([r for r in results if r["status"] == "created"])
+                    }
+                except Exception as e:
+                    conn.close()
+                    raise e
+        
+        # Se não há conexão direta, retornar instruções
+        return {
+            "status": "info",
+            "message": "Conexão direta não disponível. Execute os comandos SQL manualmente no Supabase:",
+            "instructions": [
+                "1. Acesse o painel do Supabase",
+                "2. Vá para SQL Editor", 
+                "3. Execute os comandos SQL abaixo:"
+            ],
+            "sql_commands": [idx["sql"] for idx in indexes_to_create],
+            "indexes_info": indexes_to_create
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Erro ao otimizar banco de dados: {str(e)}",
+            "error_details": str(e)
+        }
+
+@app.get("/api/database-performance", summary="Verificar Performance do Banco")
+def check_database_performance():
+    """Verifica a performance atual do banco de dados"""
+    try:
+        # Verificar índices existentes
+        if DIRECT_URL:
+            conn = get_direct_connection()
+            if conn:
+                try:
+                    with conn.cursor() as cursor:
+                        # Verificar índices existentes
+                        cursor.execute("""
+                            SELECT 
+                                indexname, 
+                                tablename, 
+                                indexdef 
+                            FROM pg_indexes 
+                            WHERE tablename = 'pecas' 
+                            ORDER BY indexname;
+                        """)
+                        indexes = cursor.fetchall()
+                        
+                        # Verificar estatísticas da tabela
+                        cursor.execute("""
+                            SELECT 
+                                schemaname,
+                                tablename,
+                                attname,
+                                n_distinct,
+                                correlation
+                            FROM pg_stats 
+                            WHERE tablename = 'pecas'
+                            ORDER BY attname;
+                        """)
+                        stats = cursor.fetchall()
+                        
+                        # Contar registros
+                        cursor.execute("SELECT COUNT(*) FROM pecas;")
+                        total_records = cursor.fetchone()[0]
+                        
+                        conn.close()
+                        
+                        return {
+                            "status": "success",
+                            "total_records": total_records,
+                            "existing_indexes": [
+                                {
+                                    "name": idx[0],
+                                    "table": idx[1], 
+                                    "definition": idx[2]
+                                } for idx in indexes
+                            ],
+                            "table_statistics": [
+                                {
+                                    "column": stat[2],
+                                    "distinct_values": stat[3],
+                                    "correlation": stat[4]
+                                } for stat in stats
+                            ],
+                            "performance_recommendations": [
+                                "✅ Índices existentes encontrados" if indexes else "⚠️ Nenhum índice encontrado",
+                                f"📊 Total de registros: {total_records:,}",
+                                "💡 Considere executar /api/optimize-database para melhorar performance" if total_records > 10000 else "✅ Performance adequada para volume atual"
+                            ]
+                        }
+                except Exception as e:
+                    conn.close()
+                    raise e
+        
+        # Se não há conexão direta, retornar informações básicas
+        response = supabase.table(TABLE_NAME).select("id", count="exact").execute()
+        total_records = response.count if response.count is not None else 0
+        
+        return {
+            "status": "info",
+            "total_records": total_records,
+            "message": "Conexão direta não disponível para análise detalhada",
+            "recommendations": [
+                f"📊 Total de registros: {total_records:,}",
+                "💡 Configure DIRECT_URL para análise detalhada de performance",
+                "💡 Considere executar /api/optimize-database para grandes volumes" if total_records > 10000 else "✅ Volume atual adequado"
+            ]
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": f"Erro ao verificar performance: {str(e)}",
+            "error_details": str(e)
         }
 
 @app.get("/api/debug-structure", summary="Debug da Estrutura")

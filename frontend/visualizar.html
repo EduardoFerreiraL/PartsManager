@@ -1217,91 +1217,58 @@
 
         // Busca de peças
         async function handleSearch() {
-            const pn = document.getElementById('pnSearch').value.trim();
-            const descricao = document.getElementById('descricaoSearch').value.trim();
-            const chineseDesc = document.getElementById('chineseDescSearch').value.trim();
-            const ncm = document.getElementById('ncmSearch').value.trim();
-            const origin = document.getElementById('originSearch').value.trim();
-            const dateCreated = document.getElementById('dateCreatedSearch').value;
-            const reviewDate = document.getElementById('reviewDateSearch').value;
-            const requester = document.getElementById('requesterSearch').value.trim();
-            const machine = document.getElementById('machineSearch').value.trim();
-            const addedModified = document.getElementById('addedModifiedSearch').value.trim();
-            const limit = parseInt(document.getElementById('limitSearch').value);
-            
-            if (!pn && !descricao && !chineseDesc && !ncm && !origin && !dateCreated && !reviewDate && !requester && !machine && !addedModified) {
-                // Se não há filtros, fazer busca com limite padrão
-                try {
-                    showLoading(true);
-                    elements.searchBtn.disabled = true;
-                    elements.searchBtn.innerHTML = '<span class="inline-block w-5 h-5 border-2 border-white border-t-primary-500 rounded-full animate-spin"></span> Buscando...';
-                    
-                    const response = await fetch(`${API_BASE_URL}/pecas?limit=${limit}`);
-                    const data = await response.json();
-                    
-                    if (data.status === 'success') {
-                        const sortedPecas = sortData(data.pecas, appState.sortBy, appState.sortOrder);
-                        appState.allResults = sortedPecas;
-                        appState.totalResults = data.total_encontrado;
-                        appState.itemsPerPage = limit;
-                        
-                        displaySearchResults();
-                        showToast(`${data.total_encontrado} peça(s) carregada(s).`, 'success');
-                    } else {
-                        throw new Error(data.detail || 'Erro ao carregar itens');
-                    }
-                } catch (error) {
-                    let errorMessage = 'Erro ao carregar itens';
-                    if (error.message) {
-                        errorMessage += ': ' + error.message;
-                    }
-                    showToast(errorMessage, 'error');
-                    console.error('Erro ao carregar itens:', error);
-                } finally {
-                    showLoading(false);
-                    elements.searchBtn.disabled = false;
-                    elements.searchBtn.innerHTML = '<i class="fas fa-search"></i> Filtrar';
-                }
-                return;
-            }
-            
             try {
                 showLoading(true);
                 elements.searchBtn.disabled = true;
                 elements.searchBtn.innerHTML = '<span class="inline-block w-5 h-5 border-2 border-white border-t-primary-500 rounded-full animate-spin"></span> Buscando...';
                 
-                const params = new URLSearchParams();
-                if (pn) params.append('part_number', pn);
-                if (descricao) params.append('description', descricao);
-                if (chineseDesc) params.append('chinese_description', chineseDesc);
-                if (ncm) params.append('ncm', ncm);
-                if (origin) params.append('origin', origin);
-                if (dateCreated) params.append('date_of_creation', dateCreated);
-                if (reviewDate) params.append('review_date', reviewDate);
-                if (requester) params.append('requester', requester);
-                if (machine) params.append('machine', machine);
-                if (addedModified) params.append('added_modified', addedModified);
-                params.append('limit', limit);
+                // Obter filtros atuais
+                const filters = getCurrentFilters();
+                const limit = parseInt(document.getElementById('limitSearch').value);
                 
-                console.log('Parâmetros de busca:', params.toString());
+                // Verificar se há filtros aplicados
+                const hasFilters = Object.values(filters).some(value => value && value.trim() !== '');
                 
-                const response = await fetch(`${API_BASE_URL}/pecas?${params.toString()}`);
-                const data = await response.json();
+                if (!hasFilters) {
+                    // Se não há filtros, carregar todos os itens
+                    appState.currentPage = 1;
+                    appState.itemsPerPage = limit;
+                    await loadAllItems();
+                    return;
+                }
                 
-                if (data.status === 'success') {
-                    // Ordenar os resultados usando a função genérica
-                    const sortedPecas = sortData(data.pecas, appState.sortBy, appState.sortOrder);
+                // Primeiro, contar registros com filtros
+                const countParams = new URLSearchParams();
+                Object.entries(filters).forEach(([key, value]) => {
+                    if (value && value.trim() !== '') {
+                        countParams.append(key, value.trim());
+                    }
+                });
+                
+                const countResponse = await fetch(`${API_BASE_URL}/pecas/count?${countParams.toString()}`);
+                const countData = await countResponse.json();
+                
+                if (countData.status === 'success') {
+                    appState.totalResults = countData.total_count;
                     
-                    appState.allResults = sortedPecas;
-                    appState.totalResults = data.total_encontrado;
-                    // NÃO resetar para página 1 - manter página atual se possível
-                    // appState.currentPage = 1;
+                    // Se não há registros, mostrar mensagem
+                    if (appState.totalResults === 0) {
+                        appState.allResults = [];
+                        displaySearchResults();
+                        showToast('Nenhuma peça encontrada com os filtros aplicados.', 'info');
+                        return;
+                    }
+                    
+                    // Resetar para página 1 quando aplicar filtros
+                    appState.currentPage = 1;
                     appState.itemsPerPage = limit;
                     
-                    displaySearchResults();
-                    showToast(`${data.total_encontrado} peça(s) encontrada(s).`, 'success');
+                    // Buscar dados da primeira página
+                    await loadCurrentPage();
+                    
+                    showToast(`${appState.totalResults} peça(s) encontrada(s) com os filtros aplicados.`, 'success');
                 } else {
-                    throw new Error(data.detail || 'Erro na busca');
+                    throw new Error(countData.detail || 'Erro ao contar registros');
                 }
             } catch (error) {
                 let errorMessage = 'Erro ao realizar busca';
@@ -1369,42 +1336,41 @@
             return sortedData;
         }
 
-        // Carregar todos os itens automaticamente
+        // Carregar todos os itens automaticamente com paginação server-side
         async function loadAllItems() {
             try {
                 showLoading(true);
                 
-                // Usar um limite alto para pegar todos os itens com ordenação consistente
-                const response = await fetch(`${API_BASE_URL}/pecas?limit=10000`);
-                const data = await response.json();
+                // Primeiro, obter o total de registros
+                const countResponse = await fetch(`${API_BASE_URL}/pecas/count`);
+                const countData = await countResponse.json();
                 
-                if (data.status === 'success') {
-                    // Ordenar os dados usando a função genérica
-                    const sortedPecas = sortData(data.pecas, appState.sortBy, appState.sortOrder);
+                if (countData.status === 'success') {
+                    appState.totalResults = countData.total_count;
                     
-                    appState.allResults = sortedPecas;
-                    appState.totalResults = data.total_encontrado;
-                    // NÃO resetar para página 1 - manter página atual se possível
-                    // appState.currentPage = 1;
-                    appState.itemsPerPage = 100; // Mostrar 100 por página
-                    
-                    // Debug: verificar estrutura dos dados
-                    console.log('Dados carregados e ordenados:', {
-                        total: data.total_encontrado,
-                        primeiraPeca: sortedPecas[0],
-                        colunas: sortedPecas[0] ? Object.keys(sortedPecas[0]) : [],
-                        ordenacao: `${appState.sortBy} ${appState.sortOrder}`
-                    });
-                    
-                    displaySearchResults();
-                    
-                    if (data.total_encontrado > 0) {
-                        showToast(`${data.total_encontrado} peça(s) carregada(s) automaticamente.`, 'success');
-                    } else {
+                    // Se não há registros, mostrar mensagem
+                    if (appState.totalResults === 0) {
+                        appState.allResults = [];
+                        displaySearchResults();
                         showToast('Nenhuma peça encontrada no banco de dados.', 'info');
+                        return;
                     }
+                    
+                    // Calcular página atual baseada no total
+                    const maxPage = Math.ceil(appState.totalResults / appState.itemsPerPage);
+                    if (appState.currentPage > maxPage) {
+                        appState.currentPage = maxPage;
+                    }
+                    if (appState.currentPage < 1) {
+                        appState.currentPage = 1;
+                    }
+                    
+                    // Buscar dados da página atual
+                    await loadCurrentPage();
+                    
+                    showToast(`${appState.totalResults} peça(s) encontrada(s) no banco de dados.`, 'success');
                 } else {
-                    throw new Error(data.detail || 'Erro ao carregar itens');
+                    throw new Error(countData.detail || 'Erro ao contar itens');
                 }
             } catch (error) {
                 showToast('Erro ao carregar itens: ' + error.message, 'error');
@@ -1412,6 +1378,70 @@
             } finally {
                 showLoading(false);
             }
+        }
+
+        // Carregar página atual com paginação server-side
+        async function loadCurrentPage() {
+            try {
+                const offset = (appState.currentPage - 1) * appState.itemsPerPage;
+                
+                // Construir parâmetros da busca
+                const params = new URLSearchParams();
+                params.append('limit', appState.itemsPerPage);
+                params.append('offset', offset);
+                params.append('order_by', appState.sortBy);
+                params.append('order_direction', appState.sortOrder);
+                
+                // Adicionar filtros se existirem
+                const filters = getCurrentFilters();
+                Object.entries(filters).forEach(([key, value]) => {
+                    if (value && value.trim() !== '') {
+                        params.append(key, value.trim());
+                    }
+                });
+                
+                const response = await fetch(`${API_BASE_URL}/pecas?${params.toString()}`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    appState.allResults = data.pecas;
+                    
+                    // Debug: verificar estrutura dos dados
+                    console.log('Dados carregados com paginação:', {
+                        total: appState.totalResults,
+                        paginaAtual: appState.currentPage,
+                        itensPorPagina: appState.itemsPerPage,
+                        itensCarregados: data.pecas.length,
+                        primeiraPeca: data.pecas[0],
+                        colunas: data.pecas[0] ? Object.keys(data.pecas[0]) : [],
+                        ordenacao: `${appState.sortBy} ${appState.sortOrder}`,
+                        pagination: data.pagination
+                    });
+                    
+                    displaySearchResults();
+                } else {
+                    throw new Error(data.detail || 'Erro ao carregar página');
+                }
+            } catch (error) {
+                showToast('Erro ao carregar página: ' + error.message, 'error');
+                console.error('Erro ao carregar página:', error);
+            }
+        }
+
+        // Obter filtros atuais do formulário
+        function getCurrentFilters() {
+            return {
+                part_number: document.getElementById('pnSearch').value,
+                description: document.getElementById('descricaoSearch').value,
+                chinese_description: document.getElementById('chineseDescSearch').value,
+                ncm: document.getElementById('ncmSearch').value,
+                origin: document.getElementById('originSearch').value,
+                date_of_creation: document.getElementById('dateCreatedSearch').value,
+                review_date: document.getElementById('reviewDateSearch').value,
+                requester: document.getElementById('requesterSearch').value,
+                machine: document.getElementById('machineSearch').value,
+                added_modified: document.getElementById('addedModifiedSearch').value
+            };
         }
 
         // Exibir resultados da busca
@@ -1429,53 +1459,8 @@
                 return;
             }
 
-            // Verificar se a página atual é válida
-            const maxPage = Math.ceil(appState.allResults.length / appState.itemsPerPage);
-            if (appState.currentPage > maxPage) {
-                appState.currentPage = maxPage;
-                console.log(`⚠️ Página atual (${appState.currentPage}) maior que máximo (${maxPage}), ajustando para ${maxPage}`);
-            }
-            if (appState.currentPage < 1) {
-                appState.currentPage = 1;
-                console.log(`⚠️ Página atual (${appState.currentPage}) menor que 1, ajustando para 1`);
-            }
-
-            // Tentar manter o item editado na mesma posição visual
-            let targetPage = appState.currentPage;
-            if (appState.lastEditedPartNumber) {
-                console.log('🔍 Procurando item editado:', appState.lastEditedPartNumber);
-                console.log('📊 Total de itens na lista:', appState.allResults.length);
-                console.log('📄 Itens por página:', appState.itemsPerPage);
-                console.log('📄 Página atual antes da busca:', appState.currentPage);
-                
-                const editedIndex = appState.allResults.findIndex(peca => 
-                    peca.part_number && peca.part_number.toString() === appState.lastEditedPartNumber
-                );
-                
-                console.log('📍 Índice do item editado encontrado:', editedIndex);
-                
-                if (editedIndex !== -1) {
-                    // Calcular em qual página está o item editado
-                    const newPage = Math.floor(editedIndex / appState.itemsPerPage) + 1;
-                    console.log('📄 Página calculada para o item editado:', newPage);
-                    console.log('📄 Página atual:', appState.currentPage);
-                    
-                    if (newPage !== appState.currentPage) {
-                        targetPage = newPage;
-                        appState.currentPage = newPage;
-                        console.log(`📍 Item editado encontrado na página ${newPage}, ajustando visualização`);
-                    } else {
-                        console.log('✅ Item editado já está na página atual');
-                    }
-                } else {
-                    console.log('❌ Item editado não encontrado na lista');
-                }
-            }
-
-            // Calcular paginação
-            const startIndex = (targetPage - 1) * appState.itemsPerPage;
-            const endIndex = startIndex + appState.itemsPerPage;
-            appState.currentResults = appState.allResults.slice(startIndex, endIndex);
+            // Usar todos os resultados carregados (já paginados pelo servidor)
+            appState.currentResults = appState.allResults;
 
             // Criar cabeçalho da tabela
             const columns = Object.keys(appState.currentResults[0]);
@@ -1533,8 +1518,10 @@
 
             // Atualizar contadores
             elements.resultsCount.textContent = appState.totalResults;
-            elements.showingStart.textContent = startIndex + 1;
-            elements.showingEnd.textContent = Math.min(endIndex, appState.totalResults);
+            const startIndex = (appState.currentPage - 1) * appState.itemsPerPage + 1;
+            const endIndex = startIndex + appState.currentResults.length - 1;
+            elements.showingStart.textContent = startIndex;
+            elements.showingEnd.textContent = endIndex;
             elements.totalResults.textContent = appState.totalResults;
             elements.currentPage.textContent = appState.currentPage;
 
@@ -1578,18 +1565,18 @@
         }
 
         // Mudar página
-        function changePage(direction) {
+        async function changePage(direction) {
             const newPage = appState.currentPage + direction;
             const totalPages = Math.ceil(appState.totalResults / appState.itemsPerPage);
             
             if (newPage >= 1 && newPage <= totalPages) {
                 appState.currentPage = newPage;
-                displaySearchResults();
+                await loadCurrentPage();
             }
         }
 
         // Mudar itens por página
-        function handleItemsPerPageChange() {
+        async function handleItemsPerPageChange() {
             const newItemsPerPage = parseInt(document.getElementById('limitSearch').value);
             
             if (newItemsPerPage !== appState.itemsPerPage) {
@@ -1599,19 +1586,13 @@
                 appState.itemsPerPage = newItemsPerPage;
                 appState.currentPage = 1; // Voltar para a primeira página
                 
-                // Se há resultados carregados, recarregar a exibição
-                if (appState.allResults && appState.allResults.length > 0) {
-                    displaySearchResults();
-                    updatePaginationInfo();
-                } else {
-                    // Se não há resultados, recarregar todos os itens
-                    loadAllItems();
-                }
+                // Recarregar dados com nova configuração
+                await loadCurrentPage();
             }
         }
 
         // Limpar filtros
-        function clearFilters() {
+        async function clearFilters() {
             console.log('🧹 Limpando filtros e preservando posição do item editado');
             
             document.getElementById('pnSearch').value = '';
@@ -1627,7 +1608,7 @@
             document.getElementById('limitSearch').value = '100';
             
             // Recarregar todos os itens após limpar filtros, mas preservando a posição
-            loadAllItems();
+            await loadAllItems();
         }
 
         // Exportar resultados
