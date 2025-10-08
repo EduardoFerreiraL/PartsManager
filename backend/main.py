@@ -82,6 +82,20 @@ def execute_direct_sql(query, params=None):
 # Define o nome da tabela no Supabase
 TABLE_NAME = "pecas"
 
+def get_next_position():
+    """Obtém a próxima posição disponível para ordenação"""
+    try:
+        # Buscar a maior posição atual
+        response = supabase.table(TABLE_NAME).select("position").order("position", desc=True).limit(1).execute()
+        
+        if response.data and response.data[0].get('position'):
+            return response.data[0]['position'] + 1
+        else:
+            return 1  # Primeira posição
+    except Exception as e:
+        print(f"Erro ao obter próxima posição: {e}")
+        return 1
+
 # Inicializa a aplicação FastAPI
 app = FastAPI(
     title="Gerenciador de Peças API",
@@ -210,7 +224,7 @@ def validate_excel_data(data_list):
     
     return errors, warnings
 
-def clean_data_for_supabase(data_list):
+def clean_data_for_supabase(data_list, assign_positions=True):
     """Limpa e valida dados antes de enviar para o Supabase"""
     cleaned_data = []
     
@@ -226,10 +240,12 @@ def clean_data_for_supabase(data_list):
         'review_date': 'date',
         'requester': 'string',
         'machine': 'string',
-        'created_at': 'ignore'  # Ignorar - será gerado automaticamente
+        'created_at': 'ignore',  # Ignorar - será gerado automaticamente
+        'position': 'ignore'  # Ignorar - será atribuído automaticamente
     }
     
-
+    # Obter posição inicial se necessário
+    current_position = get_next_position() if assign_positions else None
     
     for row_index, row in enumerate(data_list):
         cleaned_row = {}
@@ -315,11 +331,13 @@ def clean_data_for_supabase(data_list):
                 # Se falhar na conversão, definir como None
                 cleaned_row[key] = None
         
-        cleaned_data.append(cleaned_row)
+        # Atribuir posição se necessário
+        if assign_positions and current_position is not None:
+            cleaned_row['position'] = current_position
+            current_position += 1
         
-
+        cleaned_data.append(cleaned_row)
     
-
     return cleaned_data
 
 def generate_conflicts_excel(conflicts, filename):
@@ -702,8 +720,8 @@ async def upload_excel(file: UploadFile = File(...)):
                 }
             }
         
-        # Limpar dados antes de inserir usando a função especializada
-        cleaned_data = clean_data_for_supabase(data_to_insert)
+        # Limpar dados antes de inserir usando a função especializada (com atribuição de posição)
+        cleaned_data = clean_data_for_supabase(data_to_insert, assign_positions=True)
         
         # Verificar se há valores problemáticos antes de enviar
 
@@ -772,7 +790,11 @@ async def upload_excel(file: UploadFile = File(...)):
 
         response = supabase.table(TABLE_NAME).insert(cleaned_data).execute()
         
-
+        # Filtrar a coluna position dos dados retornados
+        filtered_data = []
+        for item in response.data:
+            filtered_item = {k: v for k, v in item.items() if k != 'position'}
+            filtered_data.append(filtered_item)
         
         return {
             "status": "success",
@@ -786,7 +808,8 @@ async def upload_excel(file: UploadFile = File(...)):
             "estrutura_tabela": available_columns,
             "conflicts_found": len(conflicts) if 'conflicts' in locals() else 0,
             "total_original": len(data_to_insert),
-            "conflicts_excel": conflicts_excel if 'conflicts' in locals() and conflicts else None
+            "conflicts_excel": conflicts_excel if 'conflicts' in locals() and conflicts else None,
+            "dados_inseridos": filtered_data  # Usar dados filtrados
         }
         
     except Exception as e:
@@ -898,8 +921,8 @@ def search_pecas(
     added_modified: str = None,
     limit: int = 100,
     offset: int = 0,
-    order_by: str = "part_number",
-    order_direction: str = "asc"
+    order_by: str = "position",
+    order_direction: str = "desc"
 ):
     """Busca peças com filtros opcionais e paginação otimizada"""
     try:
@@ -912,13 +935,13 @@ def search_pecas(
             offset = 0    # Offset mínimo
             
         # Validar campo de ordenação
-        valid_order_fields = ['part_number', 'description', 'ncm', 'date_of_creation', 'review_date']
+        valid_order_fields = ['part_number', 'description', 'ncm', 'date_of_creation', 'review_date', 'position']
         if order_by not in valid_order_fields:
-            order_by = 'part_number'
+            order_by = 'position'
             
         # Validar direção de ordenação
         if order_direction.lower() not in ['asc', 'desc']:
-            order_direction = 'asc'
+            order_direction = 'desc'
         
         query = supabase.table(TABLE_NAME).select("*")
         
@@ -982,15 +1005,22 @@ def search_pecas(
         
         response = query.execute()
         
+        # Filtrar a coluna position dos dados retornados
+        filtered_data = []
+        for item in response.data:
+            # Criar uma cópia sem a coluna position
+            filtered_item = {k: v for k, v in item.items() if k != 'position'}
+            filtered_data.append(filtered_item)
+        
         return {
             "status": "success",
-            "pecas": response.data,
-            "total_encontrado": len(response.data),
+            "pecas": filtered_data,  # Usar dados filtrados
+            "total_encontrado": len(filtered_data),
             "pagination": {
                 "limit": limit,
                 "offset": offset,
                 "current_page": (offset // limit) + 1,
-                "has_next": len(response.data) == limit
+                "has_next": len(filtered_data) == limit
             },
             "filtros_aplicados": {
                 "part_number": part_number,
@@ -1155,8 +1185,8 @@ def add_peca(peca_data: dict):
         if existing.data:
             raise HTTPException(status_code=409, detail=f"Part Number {peca_data['part_number']} já existe no banco de dados")
         
-        # Limpar dados antes de inserir
-        cleaned_data = clean_data_for_supabase([peca_data])
+        # Limpar dados antes de inserir (com atribuição de posição)
+        cleaned_data = clean_data_for_supabase([peca_data], assign_positions=True)
         
         if not cleaned_data:
             raise HTTPException(status_code=400, detail="Dados inválidos após limpeza")
@@ -1167,10 +1197,13 @@ def add_peca(peca_data: dict):
         if not response.data:
             raise HTTPException(status_code=500, detail="Erro ao inserir dados no banco")
         
+        # Filtrar a coluna position da resposta
+        filtered_peca = {k: v for k, v in response.data[0].items() if k != 'position'}
+        
         return {
             "status": "success",
             "message": "Peça adicionada com sucesso",
-            "peca": response.data[0]
+            "peca": filtered_peca  # Usar dados filtrados
         }
         
     except HTTPException:
@@ -1677,6 +1710,132 @@ def debug_structure():
             "tabela": TABLE_NAME,
             "existe": False,
             "erro": error_msg
+        }
+
+@app.post("/api/reload-schema-cache", summary="Recarregar Cache de Esquema")
+def reload_schema_cache():
+    """Recarrega o cache de esquema do PostgREST para resolver erro PGRST205"""
+    try:
+        # Tentar usar conexão direta para enviar NOTIFY
+        if DIRECT_URL:
+            conn = get_direct_connection()
+            if conn:
+                try:
+                    with conn.cursor() as cursor:
+                        # Enviar notificação para recarregar cache do PostgREST
+                        cursor.execute("NOTIFY pgrst, 'reload schema';")
+                        conn.commit()
+                        conn.close()
+                        
+                        return {
+                            "status": "success",
+                            "message": "Cache de esquema recarregado com sucesso",
+                            "metodo": "NOTIFY pgrst",
+                            "instrucoes": [
+                                "O cache foi recarregado usando NOTIFY",
+                                "Tente acessar a aplicação novamente",
+                                "Se o problema persistir, aguarde alguns minutos"
+                            ]
+                        }
+                except Exception as e:
+                    conn.close()
+                    raise e
+        
+        # Se não há conexão direta, retornar instruções manuais
+        return {
+            "status": "warning",
+            "message": "Não foi possível recarregar automaticamente. Execute manualmente:",
+            "metodo": "manual",
+            "instrucoes": [
+                "1. Acesse o painel do Supabase",
+                "2. Vá para SQL Editor",
+                "3. Execute: NOTIFY pgrst, 'reload schema';",
+                "4. Ou aguarde alguns minutos para o cache atualizar automaticamente"
+            ],
+            "sql_para_executar": "NOTIFY pgrst, 'reload schema';"
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": "Erro ao recarregar cache de esquema",
+            "erro": str(e),
+            "instrucoes_alternativas": [
+                "1. Aguarde 5-10 minutos para o cache atualizar automaticamente",
+                "2. Reinicie o servidor Supabase se possível",
+                "3. Execute manualmente no SQL Editor: NOTIFY pgrst, 'reload schema';"
+            ]
+        }
+
+@app.post("/api/migrate-position-field", summary="Migrar Campo Position")
+def migrate_position_field():
+    """Adiciona campo position aos registros existentes"""
+    try:
+        if DIRECT_URL:
+            conn = get_direct_connection()
+            if conn:
+                try:
+                    with conn.cursor() as cursor:
+                        # Verificar se o campo já existe
+                        cursor.execute("""
+                            SELECT column_name 
+                            FROM information_schema.columns 
+                            WHERE table_name = 'pecas' AND column_name = 'position'
+                        """)
+                        field_exists = cursor.fetchone()
+                        
+                        if not field_exists:
+                            # Adicionar campo position
+                            cursor.execute("""
+                                ALTER TABLE pecas 
+                                ADD COLUMN position SERIAL
+                            """)
+                            conn.commit()
+                            
+                            return {
+                                "status": "success",
+                                "message": "Campo 'position' adicionado com sucesso",
+                                "field_added": True,
+                                "instructions": [
+                                    "O campo position foi adicionado à tabela",
+                                    "Todos os registros existentes receberam posições sequenciais",
+                                    "Novos registros terão automaticamente a próxima posição",
+                                    "A ordenação padrão agora é por position DESC (mais novos primeiro)"
+                                ]
+                            }
+                        else:
+                            conn.close()
+                            return {
+                                "status": "info",
+                                "message": "Campo 'position' já existe na tabela",
+                                "field_exists": True
+                            }
+                except Exception as e:
+                    conn.close()
+                    raise e
+        
+        # Se não há conexão direta, retornar instruções manuais
+        return {
+            "status": "warning",
+            "message": "Execute manualmente no Supabase SQL Editor:",
+            "sql_command": "ALTER TABLE pecas ADD COLUMN position SERIAL;",
+            "instructions": [
+                "1. Acesse o Supabase Dashboard",
+                "2. Vá para SQL Editor", 
+                "3. Execute: ALTER TABLE pecas ADD COLUMN position SERIAL;",
+                "4. Isso criará o campo position com valores sequenciais"
+            ]
+        }
+        
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": "Erro ao adicionar campo position",
+            "erro": str(e),
+            "manual_solution": {
+                "sql": "ALTER TABLE pecas ADD COLUMN position SERIAL;",
+                "instructions": "Execute este SQL no Supabase SQL Editor"
+            }
         }
 
 @app.put("/api/pecas/part_number/{part_number}", summary="Atualizar Peça por Part Number")
