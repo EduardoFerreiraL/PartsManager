@@ -428,6 +428,29 @@
     <script>
         // Configuração da API
         const API_BASE_URL = '/api';
+
+        // Adicionar após const API_BASE_URL = '/api';
+async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response;
+        } catch (error) {
+            console.log(`Tentativa ${attempt}/${maxRetries} falhou:`, error.message);
+            
+            if (attempt === maxRetries) {
+                throw error;
+            }
+            
+            // Aguardar antes de tentar novamente (backoff exponencial)
+            const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }
+}
         
         // Adicionar estilos CSS para Excel
         const style = document.createElement('style');
@@ -1198,7 +1221,7 @@
                 elements.checkStatusBtn.innerHTML = '<span class="inline-block w-5 h-5 border-2 border-gray-300 border-t-primary-500 rounded-full animate-spin"></span> Verificando...';
                 elements.checkStatusBtn.disabled = true;
                 
-                const response = await fetch(`${API_BASE_URL}/health`);
+                const response = await fetchWithRetry(`${API_BASE_URL}/health`);
                 const data = await response.json();
                 
                 if (data.status === 'healthy') {
@@ -1215,74 +1238,74 @@
             }
         }
 
-        // Busca de peças
-        async function handleSearch() {
-            try {
-                showLoading(true);
-                elements.searchBtn.disabled = true;
-                elements.searchBtn.innerHTML = '<span class="inline-block w-5 h-5 border-2 border-white border-t-primary-500 rounded-full animate-spin"></span> Buscando...';
+        // // Busca de peças
+        // async function handleSearch() {
+        //     try {
+        //         showLoading(true);
+        //         elements.searchBtn.disabled = true;
+        //         elements.searchBtn.innerHTML = '<span class="inline-block w-5 h-5 border-2 border-white border-t-primary-500 rounded-full animate-spin"></span> Buscando...';
                 
-                // Obter filtros atuais
-                const filters = getCurrentFilters();
-                const limit = parseInt(document.getElementById('limitSearch').value);
+        //         // Obter filtros atuais
+        //         const filters = getCurrentFilters();
+        //         const limit = parseInt(document.getElementById('limitSearch').value);
                 
-                // Verificar se há filtros aplicados
-                const hasFilters = Object.values(filters).some(value => value && value.trim() !== '');
+        //         // Verificar se há filtros aplicados
+        //         const hasFilters = Object.values(filters).some(value => value && value.trim() !== '');
                 
-                if (!hasFilters) {
-                    // Se não há filtros, carregar todos os itens
-                    appState.currentPage = 1;
-                    appState.itemsPerPage = limit;
-                    await loadAllItems();
-                    return;
-                }
+        //         if (!hasFilters) {
+        //             // Se não há filtros, carregar todos os itens
+        //             appState.currentPage = 1;
+        //             appState.itemsPerPage = limit;
+        //             await loadAllItems();
+        //             return;
+        //         }
                 
-                // Primeiro, contar registros com filtros
-                const countParams = new URLSearchParams();
-                Object.entries(filters).forEach(([key, value]) => {
-                    if (value && value.trim() !== '') {
-                        countParams.append(key, value.trim());
-                    }
-                });
+        //         // Primeiro, contar registros com filtros
+        //         const countParams = new URLSearchParams();
+        //         Object.entries(filters).forEach(([key, value]) => {
+        //             if (value && value.trim() !== '') {
+        //                 countParams.append(key, value.trim());
+        //             }
+        //         });
                 
-                const countResponse = await fetch(`${API_BASE_URL}/pecas/count?${countParams.toString()}`);
-                const countData = await countResponse.json();
+        //         const countResponse = await fetchWithRetry(`${API_BASE_URL}/pecas/count?${countParams.toString()}`);
+        //         const countData = await countResponse.json();
                 
-                if (countData.status === 'success') {
-                    appState.totalResults = countData.total_count;
+        //         if (countData.status === 'success') {
+        //             appState.totalResults = countData.total_count;
                     
-                    // Se não há registros, mostrar mensagem
-                    if (appState.totalResults === 0) {
-                        appState.allResults = [];
-                        displaySearchResults();
-                        showToast('Nenhuma peça encontrada com os filtros aplicados.', 'info');
-                        return;
-                    }
+        //             // Se não há registros, mostrar mensagem
+        //             if (appState.totalResults === 0) {
+        //                 appState.allResults = [];
+        //                 displaySearchResults();
+        //                 showToast('Nenhuma peça encontrada com os filtros aplicados.', 'info');
+        //                 return;
+        //             }
                     
-                    // Resetar para página 1 quando aplicar filtros
-                    appState.currentPage = 1;
-                    appState.itemsPerPage = limit;
+        //             // Resetar para página 1 quando aplicar filtros
+        //             appState.currentPage = 1;
+        //             appState.itemsPerPage = limit;
                     
-                    // Buscar dados da primeira página
-                    await loadCurrentPage();
+        //             // Buscar dados da primeira página
+        //             await loadCurrentPage();
                     
-                    showToast(`${appState.totalResults} peça(s) encontrada(s) com os filtros aplicados.`, 'success');
-                } else {
-                    throw new Error(countData.detail || 'Erro ao contar registros');
-                }
-            } catch (error) {
-                let errorMessage = 'Erro ao realizar busca';
-                if (error.message) {
-                    errorMessage += ': ' + error.message;
-                }
-                showToast(errorMessage, 'error');
-                console.error('Erro na busca:', error);
-            } finally {
-                showLoading(false);
-                elements.searchBtn.disabled = false;
-                elements.searchBtn.innerHTML = '<i class="fas fa-search"></i> Filtrar';
-            }
-        }
+        //             showToast(`${appState.totalResults} peça(s) encontrada(s) com os filtros aplicados.`, 'success');
+        //         } else {
+        //             throw new Error(countData.detail || 'Erro ao contar registros');
+        //         }
+        //     } catch (error) {
+        //         let errorMessage = 'Erro ao realizar busca';
+        //         if (error.message) {
+        //             errorMessage += ': ' + error.message;
+        //         }
+        //         showToast(errorMessage, 'error');
+        //         console.error('Erro na busca:', error);
+        //     } finally {
+        //         showLoading(false);
+        //         elements.searchBtn.disabled = false;
+        //         elements.searchBtn.innerHTML = '<i class="fas fa-search"></i> Filtrar';
+        //     }
+        // }
         
 
 
@@ -1301,7 +1324,7 @@
                 showLoading(true);
                 
                 // Primeiro, obter o total de registros
-                const countResponse = await fetch(`${API_BASE_URL}/pecas/count`);
+                const countResponse = await fetchWithRetry(`${API_BASE_URL}/pecas/count`);
                 const countData = await countResponse.json();
                 
                 if (countData.status === 'success') {
@@ -1359,7 +1382,7 @@
                     }
                 });
                 
-                const response = await fetch(`${API_BASE_URL}/pecas?${params.toString()}`);
+                const response = await fetchWithRetry(`${API_BASE_URL}/pecas?${params.toString()}`);
                 const data = await response.json();
                 
                 if (data.status === 'success') {
@@ -2088,7 +2111,7 @@
                 console.log('Dados do novo item:', formData);
                 
                 // Enviar para API
-                const response = await fetch(`${API_BASE_URL}/pecas`, {
+                const response = await fetchWithRetry(`${API_BASE_URL}/pecas`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2424,7 +2447,7 @@
                 });
                 
                 // Atualizar no banco de dados usando part_number
-                const response = await fetch(`${API_BASE_URL}/pecas/part_number/${partNumber}`, {
+                const response = await fetchWithRetry(`${API_BASE_URL}/pecas/part_number/${partNumber}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -3231,7 +3254,7 @@
                 });
                 
                 // Atualizar no banco de dados usando part_number
-                const response = await fetch(`${API_BASE_URL}/pecas/part_number/${partNumber}`, {
+                const response = await fetchWithRetry(`${API_BASE_URL}/pecas/part_number/${partNumber}`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
@@ -3525,7 +3548,7 @@
                 console.log('🗑️ Excluindo linha com Part Number:', partNumber);
                 
                 // Fazer requisição para excluir a peça
-                const response = await fetch(`${API_BASE_URL}/pecas/part_number/${partNumber}`, {
+                const response = await fetchWithRetry(`${API_BASE_URL}/pecas/part_number/${partNumber}`, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',

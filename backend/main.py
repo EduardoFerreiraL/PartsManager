@@ -26,9 +26,39 @@ import io
 import json
 import base64
 from datetime import datetime
+import time
+import random
+from functools import wraps
+import httpx
 
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
+
+# Adicionar após load_dotenv()
+def retry_with_backoff(max_retries=3, base_delay=1, max_delay=60):
+    """Decorator para retry com backoff exponencial"""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    error_str = str(e)
+                    # Verificar se é erro de socket não-bloqueante
+                    if "10035" in error_str or "non-blocking socket" in error_str.lower():
+                        if attempt == max_retries - 1:
+                            raise e
+                        
+                        # Calcular delay com backoff exponencial + jitter
+                        delay = min(base_delay * (2 ** attempt) + random.uniform(0, 1), max_delay)
+                        print(f"⚠️ Erro de socket não-bloqueante (tentativa {attempt + 1}/{max_retries}). Aguardando {delay:.2f}s...")
+                        time.sleep(delay)
+                    else:
+                        raise e
+            return None
+        return wrapper
+    return decorator
 
 # Inicializa o cliente Supabase usando variáveis de ambiente
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -38,7 +68,7 @@ DIRECT_URL = os.getenv("DIRECT_URL")
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise ValueError("Variáveis de ambiente do Supabase não encontradas. Por favor, configure SUPABASE_URL e SUPABASE_KEY no seu arquivo .env.")
 
-# Conecta ao Supabase com as credenciais
+# Conecta ao Supabase com as credenciais (versão simplificada)
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Configuração para conexão direta ao PostgreSQL (se DIRECT_URL estiver disponível)
@@ -82,6 +112,7 @@ def execute_direct_sql(query, params=None):
 # Define o nome da tabela no Supabase
 TABLE_NAME = "pecas"
 
+@retry_with_backoff(max_retries=3, base_delay=1)
 def get_next_position():
     """Obtém a próxima posição disponível para ordenação"""
     try:
@@ -95,6 +126,8 @@ def get_next_position():
     except Exception as e:
         print(f"Erro ao obter próxima posição: {e}")
         return 1
+
+    
 
 # Inicializa a aplicação FastAPI
 app = FastAPI(
@@ -468,6 +501,7 @@ def visualizar_page():
         """)
 
 @app.get("/api/health", summary="Verificar Status da API")
+@retry_with_backoff(max_retries=3, base_delay=1)
 def health_check():
     """Verifica o status da API e conexão com o banco de dados"""
     try:
@@ -908,6 +942,7 @@ async def analyze_excel(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"Erro ao analisar arquivo: {str(e)}")
 
 @app.get("/api/pecas", summary="Buscar Peças")
+@retry_with_backoff(max_retries=3, base_delay=1)
 def search_pecas(
     part_number: str = None,
     description: str = None,
@@ -1050,6 +1085,7 @@ def search_pecas(
             raise HTTPException(status_code=500, detail=f"Erro na busca: {error_message}")
 
 @app.get("/api/pecas/count", summary="Contar Peças com Filtros")
+@retry_with_backoff(max_retries=3, base_delay=1)
 def count_pecas(
     part_number: str = None,
     description: str = None,
@@ -1133,6 +1169,7 @@ def count_pecas(
         raise HTTPException(status_code=500, detail=f"Erro ao contar peças: {error_message}")
 
 @app.get("/api/pecas/all", summary="Buscar Todas as Peças")
+@retry_with_backoff(max_retries=3, base_delay=1)
 def get_all_pecas():
     """Busca todas as peças sem limitação de quantidade"""
     try:
