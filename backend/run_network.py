@@ -68,6 +68,9 @@ def main():
         print("   SUPABASE_KEY=sua_chave_do_supabase")
         print()
     
+    # Definir variável de ambiente com a porta para o evento de startup detectar
+    os.environ['UVICORN_PORT'] = str(args.port)
+    
     # Iniciar o servidor
     try:
         uvicorn.run(

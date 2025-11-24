@@ -1,5 +1,7 @@
-// Configuração da API
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
+// Configuração da API (definida em config.js)
+// Usa window.API_BASE_URL que é configurado automaticamente
+// Se config.js não estiver carregado, usa fallback
+const API_BASE_URL = window.API_BASE_URL || 'http://127.0.0.1:8000/api';
 
 // Elementos do DOM
 const elements = {

@@ -58,6 +58,12 @@ http://SEU_IP_LOCAL:8000
 ```
 **Exemplo:** `http://192.168.1.100:8000`
 
+### **✨ Detecção Automática de IP:**
+O frontend agora detecta automaticamente o IP do servidor! Isso significa que:
+- ✅ Quando você acessa via `localhost`, o frontend se conecta ao `localhost`
+- ✅ Quando você acessa via IP (ex: `192.168.1.100:8000`), o frontend se conecta automaticamente ao mesmo IP
+- ✅ Não é necessário configurar nada manualmente - funciona automaticamente!
+
 ## 🔍 **Descobrir seu IP Local:**
 
 ### **Windows:**

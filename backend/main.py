@@ -30,6 +30,7 @@ import time
 import random
 from functools import wraps
 import httpx
+import socket
 
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
@@ -147,6 +148,58 @@ app.add_middleware(
 
 # Montar arquivos estáticos da pasta frontend
 app.mount("/static", StaticFiles(directory="../frontend"), name="static")
+
+# Função para obter o IP local da máquina
+def get_local_ip():
+    """Obtém o IP local da máquina"""
+    try:
+        # Conecta a um endereço externo para descobrir o IP local
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        return local_ip
+    except Exception:
+        return "127.0.0.1"
+
+# Evento de startup para mostrar informações de acesso
+@app.on_event("startup")
+async def startup_event():
+    """Exibe informações de acesso quando o servidor inicia"""
+    local_ip = get_local_ip()
+    port = 8000  # Porta padrão
+    
+    # Tentar obter a porta de várias fontes
+    try:
+        import sys
+        # Verificar argumentos da linha de comando
+        if '--port' in sys.argv:
+            port_idx = sys.argv.index('--port')
+            if port_idx + 1 < len(sys.argv):
+                port = int(sys.argv[port_idx + 1])
+        # Verificar variável de ambiente
+        elif 'PORT' in os.environ:
+            port = int(os.environ['PORT'])
+        # Verificar se há um servidor uvicorn rodando (via variável de ambiente)
+        elif 'UVICORN_PORT' in os.environ:
+            port = int(os.environ['UVICORN_PORT'])
+    except:
+        pass
+    
+    print("\n" + "="*70)
+    print("🌐 SERVIDOR INICIADO COM SUCESSO!")
+    print("="*70)
+    print(f"📍 IP Local da sua máquina: {local_ip}")
+    print(f"🔌 Porta: {port}")
+    print()
+    print("💻 Acesso local:")
+    print(f"   → http://localhost:{port}")
+    print()
+    print("📱 Acesso de outros dispositivos na mesma rede:")
+    print(f"   → http://{local_ip}:{port}")
+    print()
+    print("⚠️  Certifique-se de que o firewall permite conexões na porta", port)
+    print("="*70 + "\n")
 
 def validate_excel_data(data_list):
     """Valida dados do Excel e retorna erros detalhados"""
@@ -1976,6 +2029,48 @@ def delete_peca_by_part_number(part_number: str):
         print(f"Erro ao excluir peça: {error_message}")
         raise HTTPException(status_code=500, detail=f"Erro ao excluir peça: {error_message}")
 
+# Rotas para servir arquivos estáticos do frontend (JS, CSS, imagens)
+# Essas rotas devem ficar no final para não interferir com as rotas de API
+@app.get("/config.js", response_class=FileResponse)
+def serve_config_js():
+    """Serve o arquivo config.js"""
+    return FileResponse("../frontend/config.js")
+
+@app.get("/navbar.js", response_class=FileResponse)
+def serve_navbar_js():
+    """Serve o arquivo navbar.js"""
+    return FileResponse("../frontend/navbar.js")
+
+@app.get("/script.js", response_class=FileResponse)
+def serve_script_js():
+    """Serve o arquivo script.js"""
+    return FileResponse("../frontend/script.js")
+
+@app.get("/tailwind.config.js", response_class=FileResponse)
+def serve_tailwind_config():
+    """Serve o arquivo tailwind.config.js"""
+    return FileResponse("../frontend/tailwind.config.js")
+
+@app.get("/imagens/{filename:path}", response_class=FileResponse)
+def serve_images(filename: str):
+    """Serve imagens da pasta imagens"""
+    import os
+    image_path = os.path.join("../frontend/imagens", filename)
+    if os.path.isfile(image_path):
+        return FileResponse(image_path)
+    raise HTTPException(status_code=404, detail="Imagem não encontrada")
+
+@app.get("/components/{filename:path}", response_class=FileResponse)
+def serve_components(filename: str):
+    """Serve arquivos da pasta components"""
+    import os
+    component_path = os.path.join("../frontend/components", filename)
+    if os.path.isfile(component_path):
+        return FileResponse(component_path)
+    raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = 8000
+    os.environ['UVICORN_PORT'] = str(port)
+    uvicorn.run(app, host="0.0.0.0", port=port)

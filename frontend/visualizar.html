@@ -6,6 +6,7 @@
     <title>Gerenciador de Peças - Visualizar Itens</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="config.js"></script>
     <!-- Adicionar biblioteca XLSX -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
@@ -32,12 +33,89 @@
     </script>
 </head>
 <body class="min-h-screen text-gray-800 relative">
-            <!-- Imagem de fundo com filtro escuro -->
-        <div class="fixed inset-0 z-0">
-            <img src="imagens/fundoDb.jpg" alt="Fundo do banco de dados" class="w-full h-full object-cover" 
-                 onerror="this.style.display='none'; this.nextElementSibling.style.background='linear-gradient(135deg, #1e3a8a, #3730a3, #581c87)'">
-            <div class="absolute inset-0 bg-black bg-opacity-60"></div>
+    <!-- Imagem de fundo com filtro escuro -->
+    <div class="fixed inset-0 z-0">
+        <img src="imagens/fundoDb.jpg" alt="Fundo do banco de dados" class="w-full h-full object-cover" 
+             onerror="this.style.display='none'; this.nextElementSibling.style.background='linear-gradient(135deg, #1e3a8a, #3730a3, #581c87)'">
+        <div class="absolute inset-0 bg-black bg-opacity-60"></div>
+    </div>
+    
+    <!-- BARRA DE NAVEGAÇÃO -->
+    <nav class="bg-white/10 backdrop-blur-md border-b border-white/20 sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo/Título do Sistema -->
+                <div class="flex items-center space-x-4">
+                    <!-- Ícone do sistema -->
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-cogs text-white text-lg"></i>
+                    </div>
+                    <!-- Nome do sistema -->
+                    <h1 class="text-xl font-bold text-white hidden sm:block">
+                        Gerenciador de Peças
+                    </h1>
+                </div>
+
+                <!-- Menu de Navegação Principal -->
+                <div class="hidden md:flex items-center space-x-1">
+                    <!-- Botão Menu Principal -->
+                    <a href="/" 
+                       class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-home text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-medium text-white">Menu Principal</span>
+                    </a>
+
+                    <!-- Botão Adicionar Itens -->
+                    <a href="/adicionar" 
+                       class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-plus text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-medium text-white">Adicionar Itens</span>
+                    </a>
+
+                    <!-- Botão Visualizar Itens -->
+                    <a href="/visualizar" 
+                       class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20 active current-page">
+                        <i class="fas fa-search text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-medium text-white">Visualizar Itens</span>
+                    </a>
+                </div>
+
+                <!-- Menu Mobile (Hamburger) -->
+                <div class="md:hidden">
+                    <button id="mobileMenuBtn" 
+                            class="text-white hover:text-gray-200 transition-colors p-2">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Menu Mobile Expandido -->
+            <div id="mobileMenu" class="md:hidden hidden border-t border-white/20 pt-4 pb-4">
+                <div class="flex flex-col space-y-2">
+                    <!-- Link Menu Principal Mobile -->
+                    <a href="/" 
+                       class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-home text-white text-lg mr-3"></i>
+                        <span class="font-medium text-white">Menu Principal</span>
+                    </a>
+
+                    <!-- Link Adicionar Itens Mobile -->
+                    <a href="/adicionar" 
+                       class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-plus text-white text-lg mr-3"></i>
+                        <span class="font-medium text-white">Adicionar Itens</span>
+                    </a>
+
+                    <!-- Link Visualizar Itens Mobile -->
+                    <a href="/visualizar" 
+                       class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20 active current-page">
+                        <i class="fas fa-search text-white text-lg mr-3"></i>
+                        <span class="font-medium text-white">Visualizar Itens</span>
+                    </a>
+                </div>
+            </div>
         </div>
+    </nav>
     
     <!-- Sistema de Notificações Toast -->
     <div id="toastContainer" class="toast-container"></div>
@@ -219,15 +297,9 @@
         <div class="container mx-auto px-2 py-6 max-w-full">
         <!-- Header com Navegação -->
         <header class="text-center mb-8">
-            <div class="flex items-center justify-between mb-6">
-                <button onclick="window.location.href='/'" class="bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-lg hover:bg-white/30 transition-all duration-300 flex items-center gap-2">
-                    <i class="fas fa-arrow-left"></i>Voltar ao Menu
-                </button>
-                <h1 class="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
-                    <i class="fas fa-search mr-3"></i>Visualizar Itens
-                </h1>
-                <div class="w-20"></div> <!-- Espaçador para centralizar o título -->
-            </div>
+            <h1 class="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
+                <i class="fas fa-search mr-3"></i>Visualizar Itens
+            </h1>
             <p class="text-xl text-blue-100 opacity-90">Visualize, pesquise e filtre todas as peças cadastradas no sistema</p>
         </header>
 
@@ -426,8 +498,8 @@
     </div>
 
     <script>
-        // Configuração da API
-        const API_BASE_URL = '/api';
+        // Configuração da API (definida em config.js)
+        // Usa window.API_BASE_URL que é configurado automaticamente
 
         // Adicionar após const API_BASE_URL = '/api';
 async function fetchWithRetry(url, options = {}, maxRetries = 3) {
@@ -868,6 +940,38 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
                 100% { transform: scale(1); }
             }
             
+            /* ESTILOS DA NAVEGAÇÃO */
+            .nav-link.active, .mobile-nav-link.active {
+                background-color: rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+            }
+            
+            .nav-link.current-page, .mobile-nav-link.current-page {
+                background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3));
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            }
+            
+            .nav-link:hover, .mobile-nav-link:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+            
+            .mobile-menu-enter {
+                animation: slideDown 0.3s ease-out;
+            }
+            
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            
             /* Controle de largura das colunas */
             #excelTable th:nth-child(1), /* Part Number */
             #excelTable td:nth-child(1) {
@@ -1046,16 +1150,85 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
             saveAddItemBtn: document.getElementById('saveAddItemBtn'),
             addItemForm: document.getElementById('addItemForm'),
             hideInstructionsToggle: document.getElementById('hideInstructionsToggle'),
-            instructionsSection: document.getElementById('instructionsSection')
+            instructionsSection: document.getElementById('instructionsSection'),
+            // Elementos da navegação
+            mobileMenuBtn: document.getElementById('mobileMenuBtn'),
+            mobileMenu: document.getElementById('mobileMenu')
         };
 
         // Inicialização da aplicação
         document.addEventListener('DOMContentLoaded', function() {
             checkApiStatus();
             setupEventListeners();
+            initNavigation(); // Inicializar navegação
             // Carregar todos os itens automaticamente
             loadAllItems();
         });
+
+        // FUNÇÕES DE NAVEGAÇÃO
+        // Função para inicializar a navegação
+        function initNavigation() {
+            // Event listener para o botão do menu mobile
+            if (elements.mobileMenuBtn && elements.mobileMenu) {
+                elements.mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+            }
+            
+            // Marcar página atual como ativa
+            markCurrentPage();
+            
+            // Fechar menu mobile ao clicar fora dele
+            document.addEventListener('click', (e) => {
+                if (!elements.mobileMenuBtn.contains(e.target) && !elements.mobileMenu.contains(e.target)) {
+                    closeMobileMenu();
+                }
+            });
+        }
+
+        // Função para alternar o menu mobile
+        function toggleMobileMenu() {
+            if (elements.mobileMenu.classList.contains('hidden')) {
+                // Mostrar menu
+                elements.mobileMenu.classList.remove('hidden');
+                elements.mobileMenu.classList.add('mobile-menu-enter');
+                elements.mobileMenuBtn.innerHTML = '<i class="fas fa-times text-xl"></i>';
+            } else {
+                // Esconder menu
+                closeMobileMenu();
+            }
+        }
+
+        // Função para fechar o menu mobile
+        function closeMobileMenu() {
+            if (elements.mobileMenu && !elements.mobileMenu.classList.contains('hidden')) {
+                elements.mobileMenu.classList.add('mobile-menu-exit');
+                setTimeout(() => {
+                    elements.mobileMenu.classList.add('hidden');
+                    elements.mobileMenu.classList.remove('mobile-menu-enter', 'mobile-menu-exit');
+                    elements.mobileMenuBtn.innerHTML = '<i class="fas fa-bars text-xl"></i>';
+                }, 300);
+            }
+        }
+
+        // Função para marcar a página atual como ativa
+        function markCurrentPage() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link, .mobile-nav-link');
+            
+            navLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                
+                // Remover classe ativa de todos os links
+                link.classList.remove('active', 'current-page');
+                
+                // Adicionar classe ativa ao link correspondente à página atual
+                if (href === currentPath || 
+                    (currentPath === '/' && href === '/') ||
+                    (currentPath === '/adicionar' && href === '/adicionar') ||
+                    (currentPath === '/visualizar' && href === '/visualizar')) {
+                    link.classList.add('active', 'current-page');
+                }
+            });
+        }
 
         // Função para configurar autocomplete para um campo específico
         function setupAutocompleteForField(fieldId) {
