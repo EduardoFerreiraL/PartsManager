@@ -39,12 +39,6 @@
              onerror="this.style.display='none'; this.nextElementSibling.style.background='linear-gradient(135deg, #1e3a8a, #3730a3, #581c87)'">
         <div class="absolute inset-0 bg-black bg-opacity-60"></div>
     </div>
-    <!-- Imagem de fundo com filtro escuro -->
-    <div class="fixed inset-0 z-0">
-        <img src="imagens/fundoDb.jpg" alt="Fundo do banco de dados" class="w-full h-full object-cover" 
-             onerror="this.style.display='none'; this.nextElementSibling.style.background='linear-gradient(135deg, #1e3a8a, #3730a3, #581c87)'">
-        <div class="absolute inset-0 bg-black bg-opacity-60"></div>
-    </div>
     
     <!-- BARRA DE NAVEGAÇÃO -->
     <nav class="bg-white/10 backdrop-blur-md border-b border-white/20 sticky top-0 z-50">
@@ -306,9 +300,6 @@
             <h1 class="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
                 <i class="fas fa-search mr-3"></i>Visualizar Itens
             </h1>
-            <h1 class="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
-                <i class="fas fa-search mr-3"></i>Visualizar Itens
-            </h1>
             <p class="text-xl text-blue-100 opacity-90">Visualize, pesquise e filtre todas as peças cadastradas no sistema</p>
         </header>
 
@@ -509,9 +500,10 @@
     <script>
         // Configuração da API (definida em config.js)
         // Usa window.API_BASE_URL que é configurado automaticamente
+        const API_BASE_URL = window.API_BASE_URL || 'http://127.0.0.1:8000/api';
 
-        // Adicionar após const API_BASE_URL = '/api';
-async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+        // Função para retry de requisições
+        async function fetchWithRetry(url, options = {}, maxRetries = 3) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
             const response = await fetch(url, options);
@@ -980,6 +972,22 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
                     transform: translateY(0);
                 }
             }
+
+            /* Destaque consistente para a página atual (mesmo visual das outras telas) */
+            .nav-link.current-page,
+            .mobile-nav-link.current-page {
+                background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3)) !important;
+                border: 1px solid rgba(255, 255, 255, 0.4) !important;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+                color: #fff !important;
+            }
+
+            .nav-link.current-page i,
+            .nav-link.current-page span,
+            .mobile-nav-link.current-page i,
+            .mobile-nav-link.current-page span {
+                color: #fff !important;
+            }
             
             /* ESTILOS DA NAVEGAÇÃO */
             .nav-link.active, .mobile-nav-link.active {
@@ -1195,86 +1203,20 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
             // Elementos da navegação
             mobileMenuBtn: document.getElementById('mobileMenuBtn'),
             mobileMenu: document.getElementById('mobileMenu')
-            instructionsSection: document.getElementById('instructionsSection'),
-            // Elementos da navegação
-            mobileMenuBtn: document.getElementById('mobileMenuBtn'),
-            mobileMenu: document.getElementById('mobileMenu')
         };
 
         // Inicialização da aplicação
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Inicializando aplicação...');
+            console.log('🌐 API_BASE_URL:', API_BASE_URL);
+            console.log('📦 Elementos DOM:', elements);
+            
             checkApiStatus();
             setupEventListeners();
-            initNavigation(); // Inicializar navegação
             initNavigation(); // Inicializar navegação
             // Carregar todos os itens automaticamente
             loadAllItems();
         });
-
-        // FUNÇÕES DE NAVEGAÇÃO
-        // Função para inicializar a navegação
-        function initNavigation() {
-            // Event listener para o botão do menu mobile
-            if (elements.mobileMenuBtn && elements.mobileMenu) {
-                elements.mobileMenuBtn.addEventListener('click', toggleMobileMenu);
-            }
-            
-            // Marcar página atual como ativa
-            markCurrentPage();
-            
-            // Fechar menu mobile ao clicar fora dele
-            document.addEventListener('click', (e) => {
-                if (!elements.mobileMenuBtn.contains(e.target) && !elements.mobileMenu.contains(e.target)) {
-                    closeMobileMenu();
-                }
-            });
-        }
-
-        // Função para alternar o menu mobile
-        function toggleMobileMenu() {
-            if (elements.mobileMenu.classList.contains('hidden')) {
-                // Mostrar menu
-                elements.mobileMenu.classList.remove('hidden');
-                elements.mobileMenu.classList.add('mobile-menu-enter');
-                elements.mobileMenuBtn.innerHTML = '<i class="fas fa-times text-xl"></i>';
-            } else {
-                // Esconder menu
-                closeMobileMenu();
-            }
-        }
-
-        // Função para fechar o menu mobile
-        function closeMobileMenu() {
-            if (elements.mobileMenu && !elements.mobileMenu.classList.contains('hidden')) {
-                elements.mobileMenu.classList.add('mobile-menu-exit');
-                setTimeout(() => {
-                    elements.mobileMenu.classList.add('hidden');
-                    elements.mobileMenu.classList.remove('mobile-menu-enter', 'mobile-menu-exit');
-                    elements.mobileMenuBtn.innerHTML = '<i class="fas fa-bars text-xl"></i>';
-                }, 300);
-            }
-        }
-
-        // Função para marcar a página atual como ativa
-        function markCurrentPage() {
-            const currentPath = window.location.pathname;
-            const navLinks = document.querySelectorAll('.nav-link, .mobile-nav-link');
-            
-            navLinks.forEach(link => {
-                const href = link.getAttribute('href');
-                
-                // Remover classe ativa de todos os links
-                link.classList.remove('active', 'current-page');
-                
-                // Adicionar classe ativa ao link correspondente à página atual
-                if (href === currentPath || 
-                    (currentPath === '/' && href === '/') ||
-                    (currentPath === '/adicionar' && href === '/adicionar') ||
-                    (currentPath === '/visualizar' && href === '/visualizar')) {
-                    link.classList.add('active', 'current-page');
-                }
-            });
-        }
 
         // FUNÇÕES DE NAVEGAÇÃO
         // Função para inicializar a navegação
@@ -1591,7 +1533,67 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
         //     }
         // }
         
-
+        // Busca de peças com filtros
+        async function handleSearch() {
+            try {
+                showLoading(true);
+                elements.searchBtn.disabled = true;
+                elements.searchBtn.innerHTML = '<span class="inline-block w-5 h-5 border-2 border-white border-t-primary-500 rounded-full animate-spin"></span> Buscando...';
+                
+                // Obter filtros atuais
+                const filters = getCurrentFilters();
+                const limit = parseInt(document.getElementById('limitSearch').value);
+                
+                // Atualizar itens por página se mudou
+                if (limit !== appState.itemsPerPage) {
+                    appState.itemsPerPage = limit;
+                }
+                
+                // Resetar para página 1 quando aplicar filtros
+                appState.currentPage = 1;
+                
+                // Primeiro, obter o total de registros com filtros
+                const countParams = new URLSearchParams();
+                Object.entries(filters).forEach(([key, value]) => {
+                    if (value && value.trim() !== '') {
+                        countParams.append(key, value.trim());
+                    }
+                });
+                
+                const countResponse = await fetchWithRetry(`${API_BASE_URL}/pecas/count?${countParams.toString()}`);
+                const countData = await countResponse.json();
+                
+                if (countData.status === 'success') {
+                    appState.totalResults = countData.total_count;
+                    
+                    // Se não há registros, mostrar mensagem
+                    if (appState.totalResults === 0) {
+                        appState.allResults = [];
+                        displaySearchResults();
+                        showToast('Nenhuma peça encontrada com os filtros aplicados.', 'info');
+                        return;
+                    }
+                    
+                    // Buscar dados da primeira página com filtros
+                    await loadCurrentPage();
+                    
+                    showToast(`${appState.totalResults} peça(s) encontrada(s) com os filtros aplicados.`, 'success');
+                } else {
+                    throw new Error(countData.detail || 'Erro ao contar registros');
+                }
+            } catch (error) {
+                let errorMessage = 'Erro ao realizar busca';
+                if (error.message) {
+                    errorMessage += ': ' + error.message;
+                }
+                showToast(errorMessage, 'error');
+                console.error('Erro na busca:', error);
+            } finally {
+                showLoading(false);
+                elements.searchBtn.disabled = false;
+                elements.searchBtn.innerHTML = '<i class="fas fa-search"></i> Filtrar';
+            }
+        }
 
         // Função de ordenação removida - agora a ordenação é feita pelo servidor
         // A ordenação padrão é por 'position' DESC (mais novos primeiro)
@@ -1605,11 +1607,14 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
         // Carregar todos os itens automaticamente com paginação server-side
         async function loadAllItems() {
             try {
+                console.log('📥 Iniciando carregamento de itens...');
                 showLoading(true);
                 
                 // Primeiro, obter o total de registros
+                console.log('🔢 Buscando contagem de registros:', `${API_BASE_URL}/pecas/count`);
                 const countResponse = await fetchWithRetry(`${API_BASE_URL}/pecas/count`);
                 const countData = await countResponse.json();
+                console.log('📊 Dados de contagem recebidos:', countData);
                 
                 if (countData.status === 'success') {
                     appState.totalResults = countData.total_count;
@@ -1673,7 +1678,7 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
                     appState.allResults = data.pecas;
                     
                     // Debug: verificar estrutura dos dados
-                    console.log('Dados carregados com paginação:', {
+                    console.log('✅ Dados carregados com paginação:', {
                         total: appState.totalResults,
                         paginaAtual: appState.currentPage,
                         itensPorPagina: appState.itemsPerPage,
@@ -1684,6 +1689,7 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
                         pagination: data.pagination
                     });
                     
+                    console.log('📋 Exibindo resultados...');
                     displaySearchResults();
                 } else {
                     throw new Error(data.detail || 'Erro ao carregar página');
@@ -1976,6 +1982,7 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
                 elements.resultsContainer.style.display = 'none';
             } else {
                 elements.loadingMessage.classList.add('hidden');
+                // Não forçar exibição do container aqui - será controlado por displaySearchResults()
             }
         }
 
