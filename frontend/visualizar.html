@@ -39,6 +39,12 @@
              onerror="this.style.display='none'; this.nextElementSibling.style.background='linear-gradient(135deg, #1e3a8a, #3730a3, #581c87)'">
         <div class="absolute inset-0 bg-black bg-opacity-60"></div>
     </div>
+    <!-- Imagem de fundo com filtro escuro -->
+    <div class="fixed inset-0 z-0">
+        <img src="imagens/fundoDb.jpg" alt="Fundo do banco de dados" class="w-full h-full object-cover" 
+             onerror="this.style.display='none'; this.nextElementSibling.style.background='linear-gradient(135deg, #1e3a8a, #3730a3, #581c87)'">
+        <div class="absolute inset-0 bg-black bg-opacity-60"></div>
+    </div>
     
     <!-- BARRA DE NAVEGAÇÃO -->
     <nav class="bg-white/10 backdrop-blur-md border-b border-white/20 sticky top-0 z-50">
@@ -297,6 +303,9 @@
         <div class="container mx-auto px-2 py-6 max-w-full">
         <!-- Header com Navegação -->
         <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
+                <i class="fas fa-search mr-3"></i>Visualizar Itens
+            </h1>
             <h1 class="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
                 <i class="fas fa-search mr-3"></i>Visualizar Itens
             </h1>
@@ -972,6 +981,38 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
                 }
             }
             
+            /* ESTILOS DA NAVEGAÇÃO */
+            .nav-link.active, .mobile-nav-link.active {
+                background-color: rgba(255, 255, 255, 0.2);
+                border: 1px solid rgba(255, 255, 255, 0.3);
+            }
+            
+            .nav-link.current-page, .mobile-nav-link.current-page {
+                background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3));
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            }
+            
+            .nav-link:hover, .mobile-nav-link:hover {
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+            
+            .mobile-menu-enter {
+                animation: slideDown 0.3s ease-out;
+            }
+            
+            @keyframes slideDown {
+                from {
+                    opacity: 0;
+                    transform: translateY(-10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                }
+            }
+            
             /* Controle de largura das colunas */
             #excelTable th:nth-child(1), /* Part Number */
             #excelTable td:nth-child(1) {
@@ -1154,6 +1195,10 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
             // Elementos da navegação
             mobileMenuBtn: document.getElementById('mobileMenuBtn'),
             mobileMenu: document.getElementById('mobileMenu')
+            instructionsSection: document.getElementById('instructionsSection'),
+            // Elementos da navegação
+            mobileMenuBtn: document.getElementById('mobileMenuBtn'),
+            mobileMenu: document.getElementById('mobileMenu')
         };
 
         // Inicialização da aplicação
@@ -1161,9 +1206,75 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
             checkApiStatus();
             setupEventListeners();
             initNavigation(); // Inicializar navegação
+            initNavigation(); // Inicializar navegação
             // Carregar todos os itens automaticamente
             loadAllItems();
         });
+
+        // FUNÇÕES DE NAVEGAÇÃO
+        // Função para inicializar a navegação
+        function initNavigation() {
+            // Event listener para o botão do menu mobile
+            if (elements.mobileMenuBtn && elements.mobileMenu) {
+                elements.mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+            }
+            
+            // Marcar página atual como ativa
+            markCurrentPage();
+            
+            // Fechar menu mobile ao clicar fora dele
+            document.addEventListener('click', (e) => {
+                if (!elements.mobileMenuBtn.contains(e.target) && !elements.mobileMenu.contains(e.target)) {
+                    closeMobileMenu();
+                }
+            });
+        }
+
+        // Função para alternar o menu mobile
+        function toggleMobileMenu() {
+            if (elements.mobileMenu.classList.contains('hidden')) {
+                // Mostrar menu
+                elements.mobileMenu.classList.remove('hidden');
+                elements.mobileMenu.classList.add('mobile-menu-enter');
+                elements.mobileMenuBtn.innerHTML = '<i class="fas fa-times text-xl"></i>';
+            } else {
+                // Esconder menu
+                closeMobileMenu();
+            }
+        }
+
+        // Função para fechar o menu mobile
+        function closeMobileMenu() {
+            if (elements.mobileMenu && !elements.mobileMenu.classList.contains('hidden')) {
+                elements.mobileMenu.classList.add('mobile-menu-exit');
+                setTimeout(() => {
+                    elements.mobileMenu.classList.add('hidden');
+                    elements.mobileMenu.classList.remove('mobile-menu-enter', 'mobile-menu-exit');
+                    elements.mobileMenuBtn.innerHTML = '<i class="fas fa-bars text-xl"></i>';
+                }, 300);
+            }
+        }
+
+        // Função para marcar a página atual como ativa
+        function markCurrentPage() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link, .mobile-nav-link');
+            
+            navLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                
+                // Remover classe ativa de todos os links
+                link.classList.remove('active', 'current-page');
+                
+                // Adicionar classe ativa ao link correspondente à página atual
+                if (href === currentPath || 
+                    (currentPath === '/' && href === '/') ||
+                    (currentPath === '/adicionar' && href === '/adicionar') ||
+                    (currentPath === '/visualizar' && href === '/visualizar')) {
+                    link.classList.add('active', 'current-page');
+                }
+            });
+        }
 
         // FUNÇÕES DE NAVEGAÇÃO
         // Função para inicializar a navegação

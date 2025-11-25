@@ -264,6 +264,59 @@
         }
     </style>
 
+    <!-- Estilos CSS para navegação -->
+    <style>
+        /* Estilo para links ativos na navegação */
+        .nav-link.active, .mobile-nav-link.active {
+            background-color: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Animação suave para o menu mobile */
+        .mobile-menu-enter {
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .mobile-menu-exit {
+            animation: slideUp 0.3s ease-in;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+        }
+
+        /* Efeito de hover para os links */
+        .nav-link:hover, .mobile-nav-link:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Indicador visual da página atual */
+        .nav-link.current-page, .mobile-nav-link.current-page {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3));
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+
     <script>
         // Configuração da API (definida em config.js)
         // Usa window.API_BASE_URL que é configurado automaticamente
@@ -278,6 +331,8 @@
             // Elementos da navegação
             mobileMenuBtn: document.getElementById('mobileMenuBtn'),
             mobileMenu: document.getElementById('mobileMenu')
+            // Removido código duplicado e erro de vírgula
+            // bancoStatus já está definido acima, não é necessário repeti-lo
         };
 
         // Inicialização da aplicação
@@ -285,6 +340,75 @@
             checkApiStatus();
             refreshStats();
             initNavigation(); // Inicializar navegação
+        });
+
+        // FUNÇÕES DE NAVEGAÇÃO
+        // Função para inicializar a navegação
+        function initNavigation() {
+            // Event listener para o botão do menu mobile
+            if (elements.mobileMenuBtn && elements.mobileMenu) {
+                elements.mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+            }
+            
+            // Marcar página atual como ativa
+            markCurrentPage();
+            
+            // Fechar menu mobile ao clicar fora dele
+            document.addEventListener('click', (e) => {
+                if (!elements.mobileMenuBtn.contains(e.target) && !elements.mobileMenu.contains(e.target)) {
+                    closeMobileMenu();
+                }
+            });
+        }
+
+        // Função para alternar o menu mobile
+        function toggleMobileMenu() {
+            if (elements.mobileMenu.classList.contains('hidden')) {
+                // Mostrar menu
+                elements.mobileMenu.classList.remove('hidden');
+                elements.mobileMenu.classList.add('mobile-menu-enter');
+                elements.mobileMenuBtn.innerHTML = '<i class="fas fa-times text-xl"></i>';
+            } else {
+                // Esconder menu
+                closeMobileMenu();
+            }
+        }
+
+        // Função para fechar o menu mobile
+        function closeMobileMenu() {
+            if (elements.mobileMenu && !elements.mobileMenu.classList.contains('hidden')) {
+                elements.mobileMenu.classList.add('mobile-menu-exit');
+                setTimeout(() => {
+                    elements.mobileMenu.classList.add('hidden');
+                    elements.mobileMenu.classList.remove('mobile-menu-enter', 'mobile-menu-exit');
+                    elements.mobileMenuBtn.innerHTML = '<i class="fas fa-bars text-xl"></i>';
+                }, 300);
+            }
+        }
+
+        // Função para marcar a página atual como ativa
+        function markCurrentPage() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link, .mobile-nav-link');
+            
+            navLinks.forEach(link => {
+                const href = link.getAttribute('href');
+                
+                // Remover classe ativa de todos os links
+                link.classList.remove('active', 'current-page');
+                
+                // Adicionar classe ativa ao link correspondente à página atual
+                if (href === currentPath || 
+                    (currentPath === '/' && href === '/') ||
+                    (currentPath === '/adicionar' && href === '/adicionar') ||
+                    (currentPath === '/visualizar' && href === '/visualizar')) {
+                    link.classList.add('active', 'current-page');
+                }
+            });
+        }
+        // Inicializar navegação quando o DOM estiver pronto
+        document.addEventListener('DOMContentLoaded', function() {
+            initNavigation();
         });
 
         // FUNÇÕES DE NAVEGAÇÃO
