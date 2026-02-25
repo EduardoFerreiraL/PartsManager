@@ -71,6 +71,29 @@ def visualizar_page():
         """)
 
 
+@router.get("/atualizacao-em-massa", response_class=HTMLResponse, summary="Página de Atualização em Massa")
+def atualizacao_em_massa_page():
+    """Retorna a página de atualização em massa via planilha"""
+    try:
+        with open("../frontend/atualizacao-em-massa.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content)
+    except FileNotFoundError:
+        return HTMLResponse(content="""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Atualização em Massa - Gerenciador de Peças</title>
+        </head>
+        <body>
+            <h1>Atualização em Massa</h1>
+            <p>Arquivo frontend/atualizacao-em-massa.html não encontrado.</p>
+            <p><a href="/">Voltar ao menu principal</a></p>
+        </body>
+        </html>
+        """)
+
+
 
 
 

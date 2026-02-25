@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Peças - Atualização em Massa</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="config.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8'
+                        },
+                        secondary: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            500: '#64748b',
+                            600: '#475569'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen text-gray-800 relative">
+    <!-- Imagem de fundo com filtro escuro -->
+    <div class="fixed inset-0 z-0">
+        <img src="imagens/fundoDb.jpg" alt="Fundo do banco de dados" class="w-full h-full object-cover" 
+             onerror="this.style.display='none'; this.nextElementSibling.style.background='linear-gradient(135deg, #1e3a8a, #3730a3, #581c87)'">
+        <div class="absolute inset-0 bg-black bg-opacity-60"></div>
+    </div>
+
+    <!-- BARRA DE NAVEGAÇÃO -->
+    <nav class="bg-white/10 backdrop-blur-md border-b border-white/20 sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-cogs text-white text-lg"></i>
+                    </div>
+                    <h1 class="text-xl font-bold text-white hidden sm:block">Gerenciador de Peças</h1>
+                </div>
+
+                <div class="hidden md:flex items-center space-x-1">
+                    <a href="/" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-home text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-medium text-white">Menu Principal</span>
+                    </a>
+                    <a href="/adicionar" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-plus text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-medium text-white">Adicionar Itens</span>
+                    </a>
+                    <a href="/visualizar" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-search text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-medium text-white">Visualizar Itens</span>
+                    </a>
+                    <a href="/atualizacao-em-massa" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20 active current-page">
+                        <i class="fas fa-file-excel text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-medium text-white">Atualização em massa</span>
+                    </a>
+                </div>
+
+                <div class="md:hidden">
+                    <button id="mobileMenuBtn" class="text-white hover:text-gray-200 transition-colors p-2">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="mobileMenu" class="md:hidden hidden border-t border-white/20 pt-4 pb-4">
+                <div class="flex flex-col space-y-2">
+                    <a href="/" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-home text-white text-lg mr-3"></i>
+                        <span class="font-medium text-white">Menu Principal</span>
+                    </a>
+                    <a href="/adicionar" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-plus text-white text-lg mr-3"></i>
+                        <span class="font-medium text-white">Adicionar Itens</span>
+                    </a>
+                    <a href="/visualizar" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-search text-white text-lg mr-3"></i>
+                        <span class="font-medium text-white">Visualizar Itens</span>
+                    </a>
+                    <a href="/atualizacao-em-massa" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20 active current-page">
+                        <i class="fas fa-file-excel text-white text-lg mr-3"></i>
+                        <span class="font-medium text-white">Atualização em massa</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="relative z-10">
+        <div class="container mx-auto px-4 py-8 max-w-4xl">
+            <header class="text-center mb-8">
+                <h1 class="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
+                    <i class="fas fa-file-excel mr-3"></i>Atualização em massa
+                </h1>
+                <p class="text-xl text-blue-100 opacity-90">Gere uma planilha pelos PNs, edite e envie para atualizar várias peças de uma vez</p>
+            </header>
+
+            <!-- Toast container -->
+            <div id="toast" class="fixed top-24 right-4 z-50 hidden max-w-sm rounded-lg shadow-lg p-4 transition-opacity duration-300"></div>
+
+            <!-- Passo 1: Gerar planilha -->
+            <div class="bg-white rounded-2xl p-8 mb-6 shadow-xl">
+                <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2 mb-4">
+                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-blue-100 text-blue-600">1</span>
+                    Gerar planilha
+                </h2>
+                <p class="text-gray-600 mb-4">Informe os Part Numbers separados por vírgula. O sistema gerará uma planilha com as linhas completas desses itens para você editar.</p>
+                <textarea id="partNumbersInput" rows="4" class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Ex.: 32326449,78456132,78651235,43324594"></textarea>
+                <p class="text-sm text-gray-500 mt-2">Máximo 500 PNs por vez.</p>
+                <button type="button" id="btnGerarPlanilha" class="mt-4 bg-blue-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-600 transition-all duration-300 inline-flex items-center gap-2">
+                    <i class="fas fa-download"></i>Gerar e baixar planilha
+                </button>
+            </div>
+
+            <!-- Passo 2: Enviar planilha atualizada -->
+            <div class="bg-white rounded-2xl p-8 mb-6 shadow-xl">
+                <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2 mb-4">
+                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-600">2</span>
+                    Enviar planilha atualizada
+                </h2>
+                <p class="text-gray-600 mb-4">Após editar a planilha no Excel, envie o arquivo aqui para aplicar as atualizações no sistema.</p>
+                <div class="flex flex-col sm:flex-row gap-4 items-start">
+                    <label class="flex-1 w-full border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-green-500 hover:bg-green-50 transition-all">
+                        <input type="file" id="fileUpdateInput" accept=".xlsx" class="hidden">
+                        <i class="fas fa-file-excel text-4xl text-green-500 mb-2 block"></i>
+                        <span class="text-gray-600" id="fileUpdateLabel">Selecionar arquivo .xlsx</span>
+                    </label>
+                    <button type="button" id="btnEnviarPlanilha" class="bg-green-500 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-600 transition-all duration-300 inline-flex items-center gap-2 whitespace-nowrap" disabled>
+                        <i class="fas fa-upload"></i>Enviar para atualização
+                    </button>
+                </div>
+                <div id="resultArea" class="mt-6 hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .nav-link.active, .mobile-nav-link.active { background-color: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); }
+        .nav-link.current-page, .mobile-nav-link.current-page {
+            background: linear-gradient(135deg, rgba(59,130,246,0.3), rgba(147,51,234,0.3));
+            border: 1px solid rgba(255,255,255,0.4);
+        }
+        .nav-link:hover, .mobile-nav-link:hover { transform: translateY(-1px); }
+    </style>
+
+    <script>
+        const API_BASE = typeof API_BASE_URL !== 'undefined' ? API_BASE_URL : '/api';
+
+        const partNumbersInput = document.getElementById('partNumbersInput');
+        const btnGerarPlanilha = document.getElementById('btnGerarPlanilha');
+        const fileUpdateInput = document.getElementById('fileUpdateInput');
+        const fileUpdateLabel = document.getElementById('fileUpdateLabel');
+        const btnEnviarPlanilha = document.getElementById('btnEnviarPlanilha');
+        const resultArea = document.getElementById('resultArea');
+        const toastEl = document.getElementById('toast');
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const mobileMenu = document.getElementById('mobileMenu');
+
+        function showToast(message, type) {
+            toastEl.textContent = message;
+            toastEl.className = 'fixed top-24 right-4 z-50 max-w-sm rounded-lg shadow-lg p-4 transition-opacity duration-300 ';
+            if (type === 'success') toastEl.classList.add('bg-green-600', 'text-white');
+            else if (type === 'error') toastEl.classList.add('bg-red-600', 'text-white');
+            else toastEl.classList.add('bg-gray-800', 'text-white');
+            toastEl.classList.remove('hidden');
+            setTimeout(function() { toastEl.classList.add('hidden'); }, 5000);
+        }
+
+        function markCurrentPage() {
+            const path = window.location.pathname;
+            document.querySelectorAll('.nav-link, .mobile-nav-link').forEach(function(link) {
+                link.classList.remove('active', 'current-page');
+                if (link.getAttribute('href') === path) link.classList.add('active', 'current-page');
+            });
+        }
+
+        if (mobileMenuBtn && mobileMenu) {
+            mobileMenuBtn.addEventListener('click', function() {
+                mobileMenu.classList.toggle('hidden');
+                mobileMenuBtn.querySelector('i').className = mobileMenu.classList.contains('hidden') ? 'fas fa-bars text-xl' : 'fas fa-times text-xl';
+            });
+        }
+        document.addEventListener('DOMContentLoaded', markCurrentPage);
+
+        btnGerarPlanilha.addEventListener('click', async function() {
+            const raw = (partNumbersInput.value || '').trim();
+            if (!raw) {
+                showToast('Informe ao menos um Part Number (separados por vírgula).', 'error');
+                return;
+            }
+            btnGerarPlanilha.disabled = true;
+            btnGerarPlanilha.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
+            try {
+                const res = await fetch(API_BASE + '/export-pecas-for-update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ part_numbers: raw })
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(function() { return { detail: res.statusText }; });
+                    showToast(err.detail || 'Erro ao gerar planilha', 'error');
+                    return;
+                }
+                const blob = await res.blob();
+                const filename = res.headers.get('Content-Disposition')?.match(/filename=(.+)/)?.[1]?.replace(/"/g, '') || 'planilha_atualizacao.xlsx';
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(a.href);
+                showToast('Planilha gerada e baixada com sucesso.', 'success');
+            } catch (e) {
+                showToast('Erro ao gerar planilha: ' + e.message, 'error');
+            } finally {
+                btnGerarPlanilha.disabled = false;
+                btnGerarPlanilha.innerHTML = '<i class="fas fa-download"></i> Gerar e baixar planilha';
+            }
+        });
+
+        fileUpdateInput.addEventListener('change', function() {
+            const file = this.files && this.files[0];
+            if (file) {
+                fileUpdateLabel.textContent = file.name;
+                btnEnviarPlanilha.disabled = false;
+            } else {
+                fileUpdateLabel.textContent = 'Selecionar arquivo .xlsx';
+                btnEnviarPlanilha.disabled = true;
+            }
+            resultArea.classList.add('hidden');
+            resultArea.innerHTML = '';
+        });
+
+        btnEnviarPlanilha.addEventListener('click', async function() {
+            const file = fileUpdateInput.files && fileUpdateInput.files[0];
+            if (!file) {
+                showToast('Selecione um arquivo .xlsx', 'error');
+                return;
+            }
+            btnEnviarPlanilha.disabled = true;
+            btnEnviarPlanilha.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+            resultArea.classList.add('hidden');
+            resultArea.innerHTML = '';
+            try {
+                const form = new FormData();
+                form.append('file', file);
+                const res = await fetch(API_BASE + '/upload-excel-update', {
+                    method: 'POST',
+                    body: form
+                });
+                const data = await res.json().catch(function() { return {}; });
+                resultArea.classList.remove('hidden');
+                if (data.status === 'success' || data.status === 'partial') {
+                    resultArea.className = 'mt-6 p-4 rounded-lg ' + (data.status === 'success' ? 'bg-green-50 border border-green-200' : 'bg-amber-50 border border-amber-200');
+                    resultArea.innerHTML = '<p class="font-medium text-gray-800">' + data.mensagem + '</p>';
+                    if (data.erros && data.erros.length) {
+                        resultArea.innerHTML += '<ul class="mt-2 text-sm text-gray-600 list-disc list-inside">';
+                        data.erros.slice(0, 10).forEach(function(e) {
+                            resultArea.innerHTML += '<li>Linha ' + e.linha + ' (PN ' + e.part_number + '): ' + e.mensagem + '</li>';
+                        });
+                        if (data.erros.length > 10) resultArea.innerHTML += '<li>... e mais ' + (data.erros.length - 10) + ' erro(s)</li>';
+                        resultArea.innerHTML += '</ul>';
+                    }
+                    showToast(data.mensagem, data.status === 'success' ? 'success' : '');
+                } else {
+                    resultArea.className = 'mt-6 p-4 rounded-lg bg-red-50 border border-red-200';
+                    resultArea.innerHTML = '<p class="font-medium text-red-800">' + (data.mensagem || 'Erro ao processar planilha') + '</p>';
+                    if (data.erros && data.erros.length) {
+                        resultArea.innerHTML += '<ul class="mt-2 text-sm text-red-700 list-disc list-inside">';
+                        data.erros.slice(0, 10).forEach(function(e) {
+                            resultArea.innerHTML += '<li>Linha ' + e.linha + ' (PN ' + e.part_number + '): ' + e.mensagem + '</li>';
+                        });
+                        if (data.erros.length > 10) resultArea.innerHTML += '<li>... e mais ' + (data.erros.length - 10) + ' erro(s)</li>';
+                        resultArea.innerHTML += '</ul>';
+                    }
+                    showToast(data.mensagem || 'Erro no envio', 'error');
+                }
+            } catch (e) {
+                resultArea.classList.remove('hidden');
+                resultArea.className = 'mt-6 p-4 rounded-lg bg-red-50 border border-red-200';
+                resultArea.innerHTML = '<p class="font-medium text-red-800">Erro de conexão: ' + e.message + '</p>';
+                showToast('Erro ao enviar planilha', 'error');
+            } finally {
+                btnEnviarPlanilha.disabled = false;
+                btnEnviarPlanilha.innerHTML = '<i class="fas fa-upload"></i> Enviar para atualização';
+            }
+        });
+    </script>
+</body>
+</html>
