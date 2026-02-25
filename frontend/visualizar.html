@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
@@ -373,6 +373,16 @@
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
                 </div>
                 <div class="space-y-1">
+                    <label for="situationOsgtSearch" class="block text-xs font-medium text-gray-700">Situação OSGT</label>
+                    <select id="situationOsgtSearch" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
+                        <option value="">Todos</option>
+                        <option value="RASCUNHO">RASCUNHO</option>
+                        <option value="ENVIADO OSGT">ENVIADO OSGT</option>
+                        <option value="DESATIVADO">DESATIVADO</option>
+                        <option value="vazio">Vazio/NULL</option>
+                    </select>
+                </div>
+                <div class="space-y-1">
                     <label for="addedModifiedSearch" class="block text-xs font-medium text-gray-700">Added/Modified</label>
                     <input type="text" id="addedModifiedSearch" placeholder="Added/Modified" 
                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all">
@@ -654,7 +664,7 @@
             }
             
             /* Estilos para campos de filtro - garantir copiar e colar */
-            #pnSearch, #descricaoSearch, #chineseDescSearch, #ncmSearch, #originSearch, #dateCreatedSearch, #reviewDateSearch, #requesterSearch, #machineSearch, #addedModifiedSearch, #limitSearch {
+            #pnSearch, #descricaoSearch, #chineseDescSearch, #ncmSearch, #originSearch, #dateCreatedSearch, #reviewDateSearch, #requesterSearch, #machineSearch, #situationOsgtSearch, #addedModifiedSearch, #limitSearch {
                 user-select: text !important;
                 -webkit-user-select: text !important;
                 -moz-user-select: text !important;
@@ -1410,6 +1420,7 @@
                 'reviewDateSearch',
                 'requesterSearch',
                 'machineSearch',
+                'situationOsgtSearch',
                 'addedModifiedSearch',
                 'limitSearch'
             ];
@@ -1712,6 +1723,7 @@
                 review_date: document.getElementById('reviewDateSearch').value,
                 requester: document.getElementById('requesterSearch').value,
                 machine: document.getElementById('machineSearch').value,
+                Situation_OSGT: document.getElementById('situationOsgtSearch').value,
                 added_modified: document.getElementById('addedModifiedSearch').value
             };
         }
@@ -1733,6 +1745,9 @@
 
             // Usar todos os resultados carregados (já paginados pelo servidor)
             appState.currentResults = appState.allResults;
+            
+            // Filtrar colunas duplicadas antes de exibir
+            appState.currentResults = filterDuplicateColumns(appState.currentResults);
 
             // Criar cabeçalho da tabela
             const columns = Object.keys(appState.currentResults[0]);
@@ -1814,6 +1829,44 @@
             }
         }
 
+        // Filtrar colunas duplicadas de Situation_OSGT
+        function filterDuplicateColumns(results) {
+            if (!results || results.length === 0) return results;
+            
+            const firstRow = results[0];
+            const columns = Object.keys(firstRow);
+            
+            // Identificar colunas relacionadas a Situation_OSGT
+            const situationColumns = columns.filter(col => {
+                const normalized = col.replace(/\s+/g, '').replace(/_/g, '').toLowerCase();
+                return normalized.includes('situation') && normalized.includes('osgt');
+            });
+            
+            // Se houver múltiplas colunas de Situation_OSGT, manter apenas "Situation_OSGT"
+            if (situationColumns.length > 1) {
+                const keepColumn = situationColumns.find(col => col === 'Situation_OSGT') || situationColumns[0];
+                const removeColumns = situationColumns.filter(col => col !== keepColumn);
+                
+                // Remover colunas duplicadas dos resultados
+                return results.map(row => {
+                    const filteredRow = { ...row };
+                    
+                    // Migrar dados das colunas removidas para a coluna mantida (se necessário)
+                    removeColumns.forEach(removeCol => {
+                        if (row[removeCol] !== undefined && row[removeCol] !== null && 
+                            (filteredRow[keepColumn] === undefined || filteredRow[keepColumn] === null)) {
+                            filteredRow[keepColumn] = row[removeCol];
+                        }
+                        delete filteredRow[removeCol];
+                    });
+                    
+                    return filteredRow;
+                });
+            }
+            
+            return results;
+        }
+
         // Formatar nome da coluna para exibição
         function formatColumnName(columnName) {
             return columnName
@@ -1876,6 +1929,7 @@
             document.getElementById('reviewDateSearch').value = '';
             document.getElementById('requesterSearch').value = '';
             document.getElementById('machineSearch').value = '';
+            document.getElementById('situationOsgtSearch').value = '';
             document.getElementById('addedModifiedSearch').value = '';
             document.getElementById('limitSearch').value = '100';
             
@@ -2121,6 +2175,7 @@
                 'originSearch': 'origin',
                 'requesterSearch': 'requester',
                 'machineSearch': 'machine',
+                'situationOsgtSearch': 'Situation_OSGT',
                 'addedModifiedSearch': 'added_modified'
             };
             
@@ -2467,6 +2522,15 @@
             return date && !isNaN(date.getTime());
         }
         
+        function validateSituationOSGT(value) {
+            // Situation_OSGT deve ser vazio, "ENVIADO OSGT", "RASCUNHO" ou "DESATIVADO"
+            if (!value || value.trim() === '') {
+                return true; // NULL é permitido
+            }
+            const validValues = ['ENVIADO OSGT', 'RASCUNHO', 'DESATIVADO'];
+            return validValues.includes(value.trim());
+        }
+        
         function getColumnValidation(columnName) {
             switch(columnName) {
                 case 'ncm':
@@ -2476,6 +2540,8 @@
                 case 'date_of_creation':
                 case 'review_date':
                     return validateDate;
+                case 'Situation_OSGT':
+                    return validateSituationOSGT;
                 default:
                     return null; // Sem validação
             }
@@ -2490,20 +2556,24 @@
                 case 'date_of_creation':
                 case 'review_date':
                     return 'Data deve estar no formato DD/MM/YYYY, DD-MM-YYYY ou YYYY-MM-DD';
+                case 'Situation_OSGT':
+                    return 'Situação OSGT deve ser "ENVIADO OSGT", "RASCUNHO", "DESATIVADO" ou vazio';
                 default:
                     return 'Formato inválido';
             }
         }
+
+        // Colunas travadas: não podem ser editadas pelo usuário (review_date só é atualizado pelo sistema)
+        const NON_EDITABLE_COLUMNS = ['part_number', 'date_of_creation', 'review_date', 'added_modified'];
 
         // Função para editar célula
         function editCell(cellId, currentValue) {
             const cell = document.getElementById(cellId);
             if (!cell) return;
             
-            // Verificar se é a primeira coluna (Part Number) - não permitir edição
-            const colIndex = parseInt(cell.getAttribute('data-col'));
-            if (colIndex === 0) {
-                showToast('A primeira coluna (Part Number) não pode ser editada, mas pode ser selecionada para cópia.', 'info');
+            const column = cell.getAttribute('data-column');
+            if (NON_EDITABLE_COLUMNS.includes(column)) {
+                showToast('Este campo não pode ser editado.', 'info');
                 return;
             }
             
@@ -2592,7 +2662,6 @@
             });
             
             // Validação específica para coluna NCM - aceitar apenas números
-            const column = cell.getAttribute('data-column');
             if (column === 'ncm') {
                 textarea.addEventListener('keypress', (e) => {
                     // Permitir apenas números, backspace, delete, tab, enter, escape
@@ -3149,10 +3218,7 @@
                 addToEditHistory(cellId, oldValue, newValue);
                 console.log(`💾 Salvando alteração em ${cellId}:`, oldValue, '→', newValue);
                 
-                // Atualizar automaticamente o review_date quando qualquer célula for modificada
-                updateReviewDateForRow(cellId);
-                
-                // Salvar no banco de dados
+                // Salvar no banco de dados (o backend atualiza review_date automaticamente e retorna na resposta)
                 saveCellToDatabase(cellId, newValue);
             } else {
                 // Se o valor não mudou, apenas remover modo de edição
@@ -3563,6 +3629,16 @@
                 if (result.status === 'success') {
                     console.log('✅ Célula salva no banco com sucesso:', result);
                     
+                    // Atualizar review_date na UI e no appState (definido automaticamente pelo backend)
+                    if (result.peca_atualizada && result.peca_atualizada.review_date) {
+                        const rowIndex = parseInt(cell.getAttribute('data-row'));
+                        const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                        if (appState.allResults[actualRowIndex]) {
+                            appState.allResults[actualRowIndex]['review_date'] = result.peca_atualizada.review_date;
+                        }
+                        updateReviewDateCell(rowIndex, result.peca_atualizada.review_date);
+                    }
+                    
                     // Só mostrar toast se não for um desfazer silencioso
                     if (!skipReviewDateUpdate) {
                         showToast('Alteração salva no banco de dados!', 'success');
@@ -3609,7 +3685,8 @@
                 'chinese_description': 'Descrição Chinesa',
                 'origin': 'Origem',
                 'requester': 'Solicitante',
-                'machine': 'Máquina'
+                'machine': 'Máquina',
+                'Situation_OSGT': 'Situação OSGT'
             };
             return fieldNames[column] || column;
         }

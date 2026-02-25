@@ -2,6 +2,7 @@
 from fastapi import APIRouter, HTTPException
 import os
 import pandas as pd
+from datetime import datetime
 from database.connection import get_supabase_client, get_direct_connection
 from config.settings import TABLE_NAME, DIRECT_URL
 from services.validation_service import ValidationService
@@ -30,7 +31,7 @@ def test_model_compatibility():
         else:
             available_columns = [
                 "part_number", "chinese_description", "description", "ncm", "origin",
-                "date_of_creation", "review_date", "requester", "machine"
+                "date_of_creation", "review_date", "requester", "machine", "Situation_OSGT"
             ]
         
         model_columns = [col.lower() for col in df.columns]
@@ -85,12 +86,16 @@ def download_model_excel():
         with open(model_path, "rb") as file:
             file_content = file.read()
         
+        # Gerar nome do arquivo com data e hora
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        filename = f"modelo_pecas_{timestamp}.xlsx"
+        
         from fastapi.responses import Response
         return Response(
             content=file_content,
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={
-                "Content-Disposition": f"attachment; filename=model.xlsx",
+                "Content-Disposition": f"attachment; filename={filename}",
                 "Content-Length": str(len(file_content))
             }
         )

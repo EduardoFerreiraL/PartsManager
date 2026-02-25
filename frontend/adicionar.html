@@ -823,9 +823,20 @@
                 showValidationErrors(result);
                 return;
             } else if (result.status === 'conflicts_only') {
-                // Para conflitos, mostrar mensagem especial e não mostrar modal de sucesso
+                // Para conflitos apenas, mostrar mensagem especial e não mostrar modal de sucesso
                 showConflictsMessage(result, result.conflicts_excel);
                 return;
+            } else if (result.status === 'success') {
+                // Verificar se há conflitos mesmo com sucesso parcial
+                if (result.conflicts_found && result.conflicts_found > 0) {
+                    // Há conflitos mas também há itens inseridos - mostrar mensagem de sucesso parcial
+                    showPartialSuccessWithConflicts(result, totalTime);
+                    return;
+                } else if (result.rows_inserted) {
+                    // Sucesso completo sem conflitos
+                    itemsProcessed = result.rows_inserted;
+                    message = `${itemsProcessed} itens adicionados com sucesso!`;
+                }
             } else if (result.rows_inserted) {
                 itemsProcessed = result.rows_inserted;
                 message = `${itemsProcessed} itens adicionados com sucesso!`;
@@ -1053,34 +1064,61 @@
             messageElement.className = 'mt-6';
         }
 
-        // Mostrar mensagem de conflitos com opção de download
-        function showConflictsMessage(result, conflictsExcel) {
-            // Esconder modal de progresso primeiro
-            hideProgressModal();
+        // Mostrar mensagem de sucesso parcial com conflitos
+        function showPartialSuccessWithConflicts(result, totalTime) {
+            // Mostrar modal de sucesso primeiro
+            const itemsProcessed = result.rows_inserted || 0;
+            elements.successMessage.textContent = `${itemsProcessed} itens adicionados com sucesso!`;
+            elements.successItems.textContent = itemsProcessed;
+            elements.successTime.textContent = `${totalTime}s`;
             
+            setTimeout(() => {
+                elements.successModal.classList.remove('hidden');
+                elements.successModal.classList.add('modal-enter');
+            }, 300);
+            
+            // Depois mostrar mensagem de conflitos abaixo do modal
+            setTimeout(() => {
+                showConflictsMessage(result, result.conflicts_excel, true);
+            }, 500);
+        }
+
+        // Mostrar mensagem de conflitos com opção de download
+        function showConflictsMessage(result, conflictsExcel, isPartialSuccess = false) {
             const messageElement = elements.uploadMessage;
             
-            messageElement.className = 'mt-6 p-6 rounded-lg font-medium text-center';
-            messageElement.classList.add('bg-yellow-100', 'text-yellow-800', 'border', 'border-yellow-200');
+            // Usar cor diferente se for sucesso parcial
+            const bgColor = isPartialSuccess ? 'bg-orange-100' : 'bg-yellow-100';
+            const textColor = isPartialSuccess ? 'text-orange-800' : 'text-yellow-800';
+            const borderColor = isPartialSuccess ? 'border-orange-200' : 'border-yellow-200';
+            const iconColor = isPartialSuccess ? 'text-orange-600' : 'text-yellow-600';
+            const buttonColor = isPartialSuccess ? 'bg-orange-600 hover:bg-orange-700' : 'bg-yellow-600 hover:bg-yellow-700';
+            
+            messageElement.className = `mt-6 p-6 rounded-lg font-medium text-center ${bgColor} ${textColor} border ${borderColor}`;
+            
+            const title = isPartialSuccess ? 'Atenção: Alguns Itens Não Foram Inseridos' : 'Conflitos Encontrados';
+            const mainMessage = isPartialSuccess 
+                ? `Alguns itens foram inseridos com sucesso, mas ${result.conflicts_found} item(s) não puderam ser inseridos porque já existem no sistema.`
+                : result.message;
             
             let html = `
                 <div class="space-y-4">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
-                            <i class="fas fa-exclamation-triangle text-2xl text-yellow-600"></i>
-                            <h4 class="text-lg font-semibold">Conflitos Encontrados</h4>
+                            <i class="fas fa-exclamation-triangle text-2xl ${iconColor}"></i>
+                            <h4 class="text-lg font-semibold">${title}</h4>
                         </div>
-                        <button onclick="clearConflictsMessage()" class="text-yellow-600 hover:text-yellow-800 text-xl">
+                        <button onclick="clearConflictsMessage()" class="${textColor.replace('800', '600')} hover:${textColor.replace('800', '800')} text-xl">
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                    <p class="text-lg">${result.message}</p>
-                    <div class="bg-yellow-50 p-4 rounded-lg">
-                        <p class="text-sm text-yellow-700 mb-3">
+                    <p class="text-lg">${mainMessage}</p>
+                    <div class="${bgColor.replace('100', '50')} p-4 rounded-lg border ${borderColor}">
+                        <p class="text-sm ${textColor.replace('800', '700')} mb-3">
                             <strong>Resumo:</strong><br>
-                            • Total na planilha: ${result.total_original} itens<br>
-                            • Conflitos encontrados: ${result.conflicts_found} itens<br>
-                            • Itens inseridos: ${result.rows_inserted} itens
+                            • Total na planilha: ${result.total_original || result.total_linhas || 0} itens<br>
+                            • Conflitos encontrados: ${result.conflicts_found || 0} itens<br>
+                            • Itens inseridos: ${result.rows_inserted || 0} itens
                         </p>
                     </div>
             `;
@@ -1090,10 +1128,10 @@
                 html += `
                     <div class="pt-4">
                         <button onclick="downloadConflictsExcel('${conflictsExcel.excel_base64}', '${conflictsExcel.filename}')" 
-                                class="bg-yellow-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-yellow-700 transition-all duration-300 inline-flex items-center gap-2">
-                            <i class="fas fa-download"></i>Baixar Planilha de Conflitos
+                                class="${buttonColor} text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 inline-flex items-center gap-2">
+                            <i class="fas fa-download"></i>Baixar Planilha com Itens Não Inseridos
                         </button>
-                        <p class="text-sm text-yellow-600 mt-2">Esta planilha contém detalhes de todos os conflitos encontrados</p>
+                        <p class="text-sm ${textColor.replace('800', '600')} mt-2">Esta planilha contém detalhes de todos os itens que não puderam ser inseridos</p>
                     </div>
                 `;
             }

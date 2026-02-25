@@ -98,6 +98,17 @@ class ValidationService:
                         'sugestao': f'Use o formato DD/MM/AAAA ou AAAA-MM-DD na linha {row_index}'
                     })
             
+            # Validar Situation_OSGT
+            if row.get('Situation_OSGT'):
+                valid_values = ['ENVIADO OSGT', 'RASCUNHO', 'DESATIVADO']
+                situation_value = str(row['Situation_OSGT']).strip()
+                if situation_value not in valid_values:
+                    row_warnings.append({
+                        'campo': 'Situation_OSGT',
+                        'problema': f'Valor inválido: {situation_value}. Valores permitidos: {", ".join(valid_values)}',
+                        'sugestao': f'Use um dos valores permitidos na linha {row_index}'
+                    })
+            
             # Adicionar erros e avisos da linha
             if row_errors:
                 errors.append({
@@ -112,4 +123,8 @@ class ValidationService:
                 })
         
         return errors, warnings
+
+
+
+
 

@@ -19,3 +19,7 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 # Define o nome da tabela no Supabase
 TABLE_NAME = "pecas"
 
+
+
+
+

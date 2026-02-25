@@ -33,7 +33,7 @@ async def upload_excel(file: UploadFile = File(...)):
         else:
             available_columns = [
                 "part_number", "chinese_description", "description", "ncm", "origin",
-                "date_of_creation", "review_date", "requester", "machine"
+                "date_of_creation", "review_date", "requester", "machine", "Situation_OSGT"
             ]
         
         # Filtrar apenas as colunas que existem na tabela
@@ -80,16 +80,47 @@ async def upload_excel(file: UploadFile = File(...)):
         # Limpar dados antes de inserir
         cleaned_data = excel_service.clean_data_for_supabase(data_to_insert, assign_positions=True)
         
+        # Verificar duplicatas dentro do próprio arquivo primeiro
+        seen_pns = set()
+        duplicates_in_file = []
+        for i, row in enumerate(cleaned_data):
+            pn = str(row.get('part_number')) if row.get('part_number') else None
+            if pn:
+                if pn in seen_pns:
+                    duplicates_in_file.append({
+                        'part_number': pn,
+                        'linha_planilha': i + 1,
+                        'status': 'Duplicado no arquivo'
+                    })
+                else:
+                    seen_pns.add(pn)
+        
+        # Remover duplicatas do arquivo (manter apenas a primeira ocorrência)
+        if duplicates_in_file:
+            unique_data = []
+            seen_pns_clean = set()
+            for row in cleaned_data:
+                pn = str(row.get('part_number')) if row.get('part_number') else None
+                if pn and pn not in seen_pns_clean:
+                    unique_data.append(row)
+                    seen_pns_clean.add(pn)
+                elif not pn:
+                    # Manter linhas sem part_number (serão rejeitadas na validação, mas não causam erro aqui)
+                    unique_data.append(row)
+            cleaned_data = unique_data
+        
         # Verificar se part_numbers já existem no banco
         existing_pns = set()
         try:
             response = supabase.table(TABLE_NAME).select("part_number").execute()
             existing_pns = {str(row['part_number']) for row in response.data if row.get('part_number')}
         except Exception as e:
-            pass
+            print(f"Erro ao verificar part_numbers existentes: {e}")
         
-        # Verificar conflitos
+        # Verificar conflitos com o banco
         conflicts = []
+        conflicts.extend(duplicates_in_file)  # Adicionar duplicatas do arquivo aos conflitos
+        
         for i, row in enumerate(cleaned_data):
             pn = str(row.get('part_number')) if row.get('part_number') else None
             if pn and pn in existing_pns:
@@ -104,14 +135,18 @@ async def upload_excel(file: UploadFile = File(...)):
             # Gerar planilha de conflitos
             conflicts_excel = excel_service.generate_conflicts_excel(conflicts, file.filename)
             
-            # Filtrar apenas os que não existem no banco
-            cleaned_data = [row for row in cleaned_data if not (row.get('part_number') and str(row.get('part_number')) in existing_pns)]
+            # Filtrar apenas os que não existem no banco E não são duplicados no arquivo
+            seen_conflicts = {c['part_number'] for c in conflicts}
+            cleaned_data = [
+                row for row in cleaned_data 
+                if not (row.get('part_number') and str(row.get('part_number')) in seen_conflicts)
+            ]
             
             # Se não há dados para inserir, retornar apenas os conflitos
             if not cleaned_data:
                 return {
                     "status": "conflicts_only",
-                    "message": f"Nenhum item foi inserido. {len(conflicts)} Part Numbers já existem no banco.",
+                    "message": f"Nenhum item foi inserido. {len(conflicts)} Part Numbers já existem no banco ou são duplicados no arquivo.",
                     "rows_inserted": 0,
                     "filename": file.filename,
                     "conflicts_found": len(conflicts),
@@ -119,23 +154,69 @@ async def upload_excel(file: UploadFile = File(...)):
                     "conflicts_excel": conflicts_excel
                 }
         
-        # Inserir dados no Supabase
-        response = supabase.table(TABLE_NAME).insert(cleaned_data).execute()
+        # Inserir dados no Supabase em lotes para melhor tratamento de erros
+        inserted_data = []
+        failed_inserts = []
+        
+        if cleaned_data:
+            try:
+                # Tentar inserir todos de uma vez primeiro
+                response = supabase.table(TABLE_NAME).insert(cleaned_data).execute()
+                inserted_data = response.data if response.data else []
+            except Exception as insert_error:
+                # Se falhar, pode ser por duplicata ou outro erro
+                error_str = str(insert_error)
+                if "duplicate key" in error_str.lower() or "23505" in error_str:
+                    # Se houver erro de duplicata, tentar inserir um por um
+                    print(f"Erro de duplicata detectado, tentando inserção individual...")
+                    for row in cleaned_data:
+                        try:
+                            response = supabase.table(TABLE_NAME).insert([row]).execute()
+                            if response.data:
+                                inserted_data.extend(response.data)
+                        except Exception as individual_error:
+                            pn = row.get('part_number')
+                            failed_inserts.append({
+                                'part_number': str(pn) if pn else 'N/A',
+                                'linha_planilha': cleaned_data.index(row) + 1,
+                                'status': f'Erro na inserção: {str(individual_error)[:100]}'
+                            })
+                    # Adicionar falhas aos conflitos
+                    if failed_inserts:
+                        conflicts.extend(failed_inserts)
+                        conflicts_excel = excel_service.generate_conflicts_excel(conflicts, file.filename)
+                else:
+                    # Outro tipo de erro, relançar
+                    raise insert_error
         
         # Filtrar a coluna position dos dados retornados
-        filtered_data = pecas_service.filter_position_from_data(response.data)
+        filtered_data = pecas_service.filter_position_from_data(inserted_data) if inserted_data else []
+        
+        rows_inserted = len(inserted_data)
+        conflicts_found = len(conflicts)
+        
+        # Determinar status e mensagem
+        if rows_inserted > 0 and conflicts_found > 0:
+            status = "success"
+            message = f"Arquivo processado parcialmente! {rows_inserted} peça(s) inserida(s) com sucesso, {conflicts_found} item(s) não puderam ser inseridos."
+        elif rows_inserted > 0:
+            status = "success"
+            message = f"Arquivo processado com sucesso! {rows_inserted} peça(s) inserida(s)."
+        else:
+            status = "conflicts_only"
+            message = f"Nenhum item foi inserido. {conflicts_found} Part Number(s) já existem no banco ou são duplicados."
         
         return {
-            "status": "success",
-            "message": f"Arquivo processado com sucesso! {len(cleaned_data)} peças inseridas.",
-            "rows_inserted": len(cleaned_data),
+            "status": status,
+            "message": message,
+            "rows_inserted": rows_inserted,
             "filename": file.filename,
             "colunas_processadas": list(df_filtered.columns),
             "colunas_ignoradas": [col for col in df.columns if col not in existing_columns],
             "total_colunas": len(df_filtered.columns),
             "total_linhas": len(df_filtered),
             "estrutura_tabela": available_columns,
-            "conflicts_found": len(conflicts),
+            "conflicts_found": conflicts_found,
             "total_original": len(data_to_insert),
             "conflicts_excel": conflicts_excel,
             "dados_inseridos": filtered_data

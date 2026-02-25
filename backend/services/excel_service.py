@@ -28,6 +28,7 @@ class ExcelService:
             'review_date': 'date',
             'requester': 'string',
             'machine': 'string',
+            'Situation_OSGT': 'string',
             'created_at': 'ignore',  # Ignorar - será gerado automaticamente
             'position': 'ignore'  # Ignorar - será atribuído automaticamente
         }
@@ -186,4 +187,8 @@ class ExcelService:
                 'status': 'error',
                 'message': f'Erro ao gerar planilha: {str(e)}'
             }
+
+
+
+
 

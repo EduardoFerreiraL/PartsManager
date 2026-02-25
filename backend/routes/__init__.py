@@ -16,3 +16,7 @@ api_router.include_router(static.router, tags=["Estáticos"])
 
 __all__ = ['api_router']
 
+
+
+
+

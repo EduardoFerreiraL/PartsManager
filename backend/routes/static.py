@@ -41,3 +41,7 @@ def serve_components(filename: str):
         return FileResponse(component_path)
     raise HTTPException(status_code=404, detail="Arquivo não encontrado")
 
+
+
+
+

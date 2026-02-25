@@ -128,7 +128,8 @@ def get_stats():
                 "date_of_creation",
                 "review_date",
                 "process",
-                "machine"
+                "machine",
+                "Situation_OSGT"
             ],
             "timestamp": pd.Timestamp.now().isoformat()
         }
@@ -168,4 +169,8 @@ def get_table_structure():
             "erro": str(e),
             "dica": "Verifique se a tabela existe e se tem dados"
         }
+
+
+
+
 

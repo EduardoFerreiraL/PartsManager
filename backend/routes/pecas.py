@@ -1,4 +1,5 @@
 """Rotas relacionadas a peças"""
+from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException
 from database.connection import get_supabase_client
 from config.settings import TABLE_NAME
@@ -26,6 +27,7 @@ def search_pecas(
     requester: str = None,
     machine: str = None,
     added_modified: str = None,
+    Situation_OSGT: str = None,
     limit: int = 100,
     offset: int = 0,
     order_by: str = "position",
@@ -95,6 +97,13 @@ def search_pecas(
         if added_modified:
             query = query.ilike("added_modified", f"%{added_modified}%")
         
+        if Situation_OSGT:
+            # Tratar valores especiais para NULL
+            if Situation_OSGT.lower() in ['vazio', 'null', 'none', '']:
+                query = query.is_("Situation_OSGT", "null")
+            else:
+                query = query.eq("Situation_OSGT", Situation_OSGT)
+        
         # Aplicar ordenação
         if order_direction.lower() == "desc":
             query = query.order(order_by, desc=True)
@@ -155,7 +164,8 @@ def count_pecas(
     review_date: str = None,
     requester: str = None,
     machine: str = None,
-    added_modified: str = None
+    added_modified: str = None,
+    Situation_OSGT: str = None
 ):
     """Conta o total de peças que correspondem aos filtros aplicados"""
     try:
@@ -204,6 +214,13 @@ def count_pecas(
         if added_modified:
             query = query.ilike("added_modified", f"%{added_modified}%")
         
+        if Situation_OSGT:
+            # Tratar valores especiais para NULL
+            if Situation_OSGT.lower() in ['vazio', 'null', 'none', '']:
+                query = query.is_("Situation_OSGT", "null")
+            else:
+                query = query.eq("Situation_OSGT", Situation_OSGT)
+        
         response = query.execute()
         
         return {
@@ -219,7 +236,8 @@ def count_pecas(
                 "review_date": review_date,
                 "requester": requester,
                 "machine": machine,
-                "added_modified": added_modified
+                "added_modified": added_modified,
+                "Situation_OSGT": Situation_OSGT
             }
         }
         
@@ -314,10 +332,10 @@ def update_peca_by_part_number(part_number: str, peca_data: dict):
         except ValueError:
             part_number_int = part_number
         
-        # Validar dados recebidos
+        # Validar dados recebidos (campos travados: part_number, date_of_creation, review_date, added_modified)
         allowed_fields = {
             'chinese_description', 'description', 'ncm', 'origin',
-            'date_of_creation', 'review_date', 'requester', 'machine'
+            'requester', 'machine', 'Situation_OSGT'
         }
         
         update_data = {k: v for k, v in peca_data.items() if k in allowed_fields}
@@ -325,12 +343,11 @@ def update_peca_by_part_number(part_number: str, peca_data: dict):
         if not update_data:
             raise HTTPException(status_code=400, detail="Nenhum campo válido para atualização")
         
-        # Validar campos obrigatórios
-        required_fields = ['description', 'ncm', 'date_of_creation']
+        # Validar campos obrigatórios (apenas os editáveis)
+        required_fields = ['description', 'ncm']
         field_display_names = {
             'description': 'Descrição',
-            'ncm': 'NCM', 
-            'date_of_creation': 'Data de Criação'
+            'ncm': 'NCM'
         }
         
         for field in required_fields:
@@ -342,6 +359,9 @@ def update_peca_by_part_number(part_number: str, peca_data: dict):
                         status_code=400, 
                         detail=f"O campo '{field_name}' não pode ficar vazio"
                     )
+        
+        # Review_date só pode ser mutado pelo sistema: definir automaticamente em toda atualização
+        update_data['review_date'] = datetime.now(timezone.utc).date().isoformat()
         
         # Atualizar no Supabase
         response = supabase.table(TABLE_NAME).update(update_data).eq("part_number", part_number_int).execute()
@@ -391,4 +411,8 @@ def delete_peca_by_part_number(part_number: str):
         error_message = str(e)
         print(f"Erro ao excluir peça: {error_message}")
         raise HTTPException(status_code=500, detail=f"Erro ao excluir peça: {error_message}")
+
+
+
+
 

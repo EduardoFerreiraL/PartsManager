@@ -49,3 +49,7 @@ def execute_direct_sql(query, params=None):
     finally:
         conn.close()
 
+
+
+
+

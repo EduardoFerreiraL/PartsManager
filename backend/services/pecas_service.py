@@ -33,3 +33,7 @@ class PecasService:
             return {k: v for k, v in data.items() if k != 'position'}
         return data
 
+
+
+
+
