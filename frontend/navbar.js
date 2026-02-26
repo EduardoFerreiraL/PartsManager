@@ -84,6 +84,14 @@ class NavBar extends HTMLElement {
                             <i class="fas fa-search text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
                             <span class="font-medium text-white">Visualizar Itens</span>
                         </a>
+                        <a href="/atualizacao-em-massa" data-key="atualizacao-em-massa" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                            <i class="fas fa-file-excel text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-medium text-white">Atualização em massa</span>
+                        </a>
+                        <a href="/dashboard" data-key="dashboard" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                            <i class="fas fa-chart-line text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-medium text-white">Dashboard</span>
+                        </a>
                     </div>
                     <div class="md:hidden">
                         <button class="js-mobile-menu-btn text-white hover:text-gray-200 transition-colors p-2">
@@ -104,6 +112,14 @@ class NavBar extends HTMLElement {
                         <a href="/visualizar" data-key="visualizar" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
                             <i class="fas fa-search text-white text-lg mr-3"></i>
                             <span class="font-medium text-white">Visualizar Itens</span>
+                        </a>
+                        <a href="/atualizacao-em-massa" data-key="atualizacao-em-massa" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                            <i class="fas fa-file-excel text-white text-lg mr-3"></i>
+                            <span class="font-medium text-white">Atualização em massa</span>
+                        </a>
+                        <a href="/dashboard" data-key="dashboard" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                            <i class="fas fa-chart-line text-white text-lg mr-3"></i>
+                            <span class="font-medium text-white">Dashboard</span>
                         </a>
                     </div>
                 </div>

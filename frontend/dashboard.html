@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Peças - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="config.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { 50: '#eff6ff', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' },
+                        secondary: { 50: '#f8fafc', 100: '#f1f5f9', 500: '#64748b', 600: '#475569' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Opções do select sempre visíveis (fundo claro, texto escuro) e destaque no hover */
+        .dashboard-select option {
+            background-color: #ffffff !important;
+            color: #1e293b !important;
+        }
+        .dashboard-select option:hover {
+            background-color: #dbeafe !important;
+        }
+        .dashboard-select option:checked {
+            background-color: #2563eb !important;
+            color: #ffffff !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen text-gray-800 relative">
+    <div class="fixed inset-0 z-0">
+        <img src="imagens/fundoDb.jpg" alt="" class="w-full h-full object-cover"
+             onerror="this.style.display='none'; this.nextElementSibling.style.background='linear-gradient(135deg, #1e3a8a, #3730a3, #581c87)'">
+        <div class="absolute inset-0 bg-black bg-opacity-60"></div>
+    </div>
+
+    <nav class="bg-white/10 backdrop-blur-md border-b border-white/20 sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                        <i class="fas fa-cogs text-white text-lg"></i>
+                    </div>
+                    <h1 class="text-xl font-bold text-white hidden sm:block">Gerenciador de Peças</h1>
+                </div>
+                <div class="hidden md:flex items-center space-x-1">
+                    <a href="/" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-home text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-medium text-white">Menu Principal</span>
+                    </a>
+                    <a href="/adicionar" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-plus text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-medium text-white">Adicionar Itens</span>
+                    </a>
+                    <a href="/visualizar" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-search text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-medium text-white">Visualizar Itens</span>
+                    </a>
+                    <a href="/atualizacao-em-massa" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-file-excel text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-medium text-white">Atualização em massa</span>
+                    </a>
+                    <a href="/dashboard" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20 active current-page">
+                        <i class="fas fa-chart-line text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-medium text-white">Dashboard</span>
+                    </a>
+                </div>
+                <div class="md:hidden">
+                    <button id="mobileMenuBtn" class="text-white hover:text-gray-200 transition-colors p-2">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="mobileMenu" class="md:hidden hidden border-t border-white/20 pt-4 pb-4">
+                <div class="flex flex-col space-y-2">
+                    <a href="/" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-home text-white text-lg mr-3"></i>
+                        <span class="font-medium text-white">Menu Principal</span>
+                    </a>
+                    <a href="/adicionar" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-plus text-white text-lg mr-3"></i>
+                        <span class="font-medium text-white">Adicionar Itens</span>
+                    </a>
+                    <a href="/visualizar" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-search text-white text-lg mr-3"></i>
+                        <span class="font-medium text-white">Visualizar Itens</span>
+                    </a>
+                    <a href="/atualizacao-em-massa" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-file-excel text-white text-lg mr-3"></i>
+                        <span class="font-medium text-white">Atualização em massa</span>
+                    </a>
+                    <a href="/dashboard" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20 active current-page">
+                        <i class="fas fa-chart-line text-white text-lg mr-3"></i>
+                        <span class="font-medium text-white">Dashboard</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="relative z-10 container mx-auto px-4 py-8">
+        <h2 class="text-2xl font-bold text-white mb-6 flex items-center">
+            <i class="fas fa-chart-bar mr-2"></i> Dashboard de Análise
+        </h2>
+
+        <!-- Seletor de período (para Cadastrados e Modificados) -->
+        <section class="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-8 border border-white/20">
+            <h3 class="text-lg font-semibold text-white mb-4">Período (cadastrados e modificados)</h3>
+            <div class="flex flex-wrap items-end gap-4">
+                <div>
+                    <label class="block text-sm text-white/90 mb-1">Tipo</label>
+                    <select id="periodType" class="dashboard-select bg-white/20 text-white border border-white/30 rounded-lg px-3 py-2 focus:ring-2 focus:ring-primary-500">
+                        <option value="year">Ano</option>
+                        <option value="semester">Semestre</option>
+                        <option value="quarter">Trimestre</option>
+                        <option value="month">Mês</option>
+                        <option value="week">Semana</option>
+                        <option value="day">Dia</option>
+                    </select>
+                </div>
+                <div id="periodYearWrap">
+                    <label class="block text-sm text-white/90 mb-1">Ano</label>
+                    <input type="number" id="periodYear" class="bg-white/20 text-white border border-white/30 rounded-lg px-3 py-2 w-24" min="2000" max="2100">
+                </div>
+                <div id="periodSemesterWrap" class="hidden">
+                    <label class="block text-sm text-white/90 mb-1">Semestre</label>
+                    <select id="periodSemester" class="dashboard-select bg-white/20 text-white border border-white/30 rounded-lg px-3 py-2">
+                        <option value="1">1º</option>
+                        <option value="2">2º</option>
+                    </select>
+                </div>
+                <div id="periodQuarterWrap" class="hidden">
+                    <label class="block text-sm text-white/90 mb-1">Trimestre</label>
+                    <select id="periodQuarter" class="dashboard-select bg-white/20 text-white border border-white/30 rounded-lg px-3 py-2">
+                        <option value="1">1º</option>
+                        <option value="2">2º</option>
+                        <option value="3">3º</option>
+                        <option value="4">4º</option>
+                    </select>
+                </div>
+                <div id="periodMonthWrap" class="hidden">
+                    <label class="block text-sm text-white/90 mb-1">Mês</label>
+                    <select id="periodMonth" class="dashboard-select bg-white/20 text-white border border-white/30 rounded-lg px-3 py-2">
+                        <option value="1">Jan</option><option value="2">Fev</option><option value="3">Mar</option>
+                        <option value="4">Abr</option><option value="5">Mai</option><option value="6">Jun</option>
+                        <option value="7">Jul</option><option value="8">Ago</option><option value="9">Set</option>
+                        <option value="10">Out</option><option value="11">Nov</option><option value="12">Dez</option>
+                    </select>
+                </div>
+                <div id="periodDateWrap" class="hidden">
+                    <label class="block text-sm text-white/90 mb-1">Data</label>
+                    <input type="date" id="periodDate" class="bg-white/20 text-white border border-white/30 rounded-lg px-3 py-2">
+                </div>
+                <button type="button" id="btnApplyPeriod" class="px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg transition-colors">
+                    <i class="fas fa-sync-alt mr-2"></i>Atualizar
+                </button>
+            </div>
+            <p id="dashboardError" class="mt-2 text-red-300 text-sm hidden"></p>
+        </section>
+
+        <!-- Cadastrados -->
+        <section class="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-8 border border-white/20">
+            <h3 class="text-lg font-semibold text-white mb-4">Itens cadastrados no período</h3>
+            <div class="mb-4 h-80">
+                <canvas id="chartCadastrados"></canvas>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-white/90 text-sm" id="tableCadastrados">
+                    <thead><tr><th class="text-left py-2">Período</th><th class="text-right py-2">Quantidade</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Modificados -->
+        <section class="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-8 border border-white/20">
+            <h3 class="text-lg font-semibold text-white mb-4">Itens modificados no período</h3>
+            <div class="mb-4 h-80">
+                <canvas id="chartModificados"></canvas>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-white/90 text-sm" id="tableModificados">
+                    <thead><tr><th class="text-left py-2">Período</th><th class="text-right py-2">Quantidade</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Origin -->
+        <section class="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-8 border border-white/20">
+            <h3 class="text-lg font-semibold text-white mb-4">Comparativo por Origin</h3>
+            <div class="mb-4 h-80">
+                <canvas id="chartOrigin"></canvas>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-white/90 text-sm" id="tableOrigin">
+                    <thead><tr><th class="text-left py-2">Origin</th><th class="text-right py-2">Quantidade</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Situation_OSGT -->
+        <section class="bg-white/10 backdrop-blur-md rounded-xl p-6 mb-8 border border-white/20">
+            <h3 class="text-lg font-semibold text-white mb-4">Comparativo por Situation_OSGT</h3>
+            <div class="mb-4 h-80">
+                <canvas id="chartSituationOsgt"></canvas>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-white/90 text-sm" id="tableSituationOsgt">
+                    <thead><tr><th class="text-left py-2">Situation_OSGT</th><th class="text-right py-2">Quantidade</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        (function() {
+            const API_BASE = window.API_BASE_URL || '';
+            const MONTHS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+            if (typeof Chart !== 'undefined') Chart.defaults.color = '#f1f5f9';
+
+            let chartCadastrados = null;
+            let chartModificados = null;
+            let chartOrigin = null;
+            let chartSituationOsgt = null;
+
+            function showError(msg) {
+                const el = document.getElementById('dashboardError');
+                el.textContent = msg;
+                el.classList.remove('hidden');
+            }
+            function hideError() {
+                document.getElementById('dashboardError').classList.add('hidden');
+            }
+
+            function formatLabel(val) {
+                if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+                    const d = new Date(val + 'T12:00:00');
+                    const m = d.getMonth() + 1;
+                    const day = d.getDate();
+                    const y = d.getFullYear();
+                    if (day === 1 && m >= 1 && m <= 12) return y + ' - ' + String(m).padStart(2, '0');
+                    return val;
+                }
+                return String(val);
+            }
+
+            function buildPeriodParams() {
+                const type = document.getElementById('periodType').value;
+                const year = parseInt(document.getElementById('periodYear').value, 10) || new Date().getFullYear();
+                const params = new URLSearchParams();
+                params.set('period', type);
+                params.set('year', String(year));
+                if (type === 'semester') params.set('semester', document.getElementById('periodSemester').value);
+                if (type === 'quarter') params.set('quarter', document.getElementById('periodQuarter').value);
+                if (type === 'month') params.set('month', document.getElementById('periodMonth').value);
+                if (type === 'week' || type === 'day') {
+                    const d = document.getElementById('periodDate').value;
+                    if (d) params.set('date', d);
+                }
+                return params;
+            }
+
+            function buildAggregateParams() {
+                return {};
+            }
+
+            function togglePeriodFields() {
+                const type = document.getElementById('periodType').value;
+                document.getElementById('periodYearWrap').classList.remove('hidden');
+                document.getElementById('periodSemesterWrap').classList.toggle('hidden', type !== 'semester');
+                document.getElementById('periodQuarterWrap').classList.toggle('hidden', type !== 'quarter');
+                document.getElementById('periodMonthWrap').classList.toggle('hidden', type !== 'month');
+                document.getElementById('periodDateWrap').classList.toggle('hidden', type !== 'week' && type !== 'day');
+            }
+
+            function updateTable(id, rows, labelKey, countKey) {
+                const tbody = document.querySelector('#' + id + ' tbody');
+                tbody.innerHTML = rows.map(r => '<tr><td class="py-1">' + formatLabel(r[labelKey]) + '</td><td class="text-right py-1">' + r[countKey] + '</td></tr>').join('');
+            }
+
+            const CHART_TEXT_COLOR = '#f1f5f9';
+            const CHART_GRID_COLOR = 'rgba(255,255,255,0.15)';
+
+            function updateChartBar(canvasId, data, title, chartRef) {
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                const labels = data.map(d => formatLabel(d.label || d.value));
+                const counts = data.map(d => d.count);
+                if (chartRef) chartRef.destroy();
+                return new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [{ label: title, data: counts, backgroundColor: 'rgba(59, 130, 246, 0.6)', borderColor: 'rgb(37, 99, 235)', borderWidth: 1 }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: {
+                                ticks: { color: CHART_TEXT_COLOR, font: { size: 12 } },
+                                grid: { color: CHART_GRID_COLOR }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                ticks: { color: CHART_TEXT_COLOR, font: { size: 12 } },
+                                grid: { color: CHART_GRID_COLOR }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function updateChartPie(canvasId, data, chartRef) {
+                const ctx = document.getElementById(canvasId).getContext('2d');
+                const labels = data.map(d => String(d.value));
+                const counts = data.map(d => d.count);
+                if (chartRef) chartRef.destroy();
+                return new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels,
+                        datasets: [{ data: counts, backgroundColor: ['#3b82f6','#8b5cf6','#06b6d4','#10b981','#f59e0b','#ef4444','#ec4899','#6366f1'].concat(Array(20).fill('#64748b')) }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: CHART_TEXT_COLOR,
+                                    font: { size: 13 }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            async function loadCadastradosModificados() {
+                hideError();
+                const params = buildPeriodParams();
+                try {
+                    const [resCad, resMod] = await Promise.all([
+                        fetch(API_BASE + '/dashboard/cadastrados?' + params.toString()),
+                        fetch(API_BASE + '/dashboard/modificados?' + params.toString())
+                    ]);
+                    const dataCad = await resCad.json();
+                    const dataMod = await resMod.json();
+                    if (dataCad.status !== 'success') throw new Error(dataCad.detail || dataCad.message || 'Erro cadastrados');
+                    if (dataMod.status !== 'success') throw new Error(dataMod.detail || dataMod.message || 'Erro modificados');
+
+                    const rowsCad = dataCad.data || [];
+                    const rowsMod = dataMod.data || [];
+
+                    chartCadastrados = updateChartBar('chartCadastrados', rowsCad, 'Cadastrados', chartCadastrados);
+                    chartModificados = updateChartBar('chartModificados', rowsMod, 'Modificados', chartModificados);
+                    updateTable('tableCadastrados', rowsCad, 'label', 'count');
+                    updateTable('tableModificados', rowsMod, 'label', 'count');
+                } catch (e) {
+                    showError(e.message || 'Falha ao carregar dados. Verifique se DIRECT_URL está configurado no backend.');
+                }
+            }
+
+            async function loadOriginAndSituation() {
+                hideError();
+                const qs = new URLSearchParams(buildAggregateParams());
+                try {
+                    const [resOrigin, resSit] = await Promise.all([
+                        fetch(API_BASE + '/dashboard/origin?' + qs.toString()),
+                        fetch(API_BASE + '/dashboard/situation-osgt?' + qs.toString())
+                    ]);
+                    const dataOrigin = await resOrigin.json();
+                    const dataSit = await resSit.json();
+                    if (dataOrigin.status !== 'success') throw new Error(dataOrigin.detail || 'Erro origin');
+                    if (dataSit.status !== 'success') throw new Error(dataSit.detail || 'Erro situation');
+
+                    const rowsOrigin = dataOrigin.data || [];
+                    const rowsSit = dataSit.data || [];
+
+                    chartOrigin = updateChartPie('chartOrigin', rowsOrigin, chartOrigin);
+                    chartSituationOsgt = updateChartPie('chartSituationOsgt', rowsSit, chartSituationOsgt);
+                    document.querySelector('#tableOrigin tbody').innerHTML = rowsOrigin.map(r =>
+                        '<tr><td class="py-1">' + r.value + '</td><td class="text-right py-1">' + r.count + '</td></tr>').join('');
+                    document.querySelector('#tableSituationOsgt tbody').innerHTML = rowsSit.map(r =>
+                        '<tr><td class="py-1">' + r.value + '</td><td class="text-right py-1">' + r.count + '</td></tr>').join('');
+                } catch (e) {
+                    showError(e.message || 'Falha ao carregar Origin/Situation_OSGT.');
+                }
+            }
+
+            document.getElementById('periodType').addEventListener('change', togglePeriodFields);
+            document.getElementById('btnApplyPeriod').addEventListener('click', function() {
+                loadCadastradosModificados();
+            });
+
+            const now = new Date();
+            document.getElementById('periodYear').value = now.getFullYear();
+            document.getElementById('periodDate').value = now.toISOString().slice(0, 10);
+            togglePeriodFields();
+
+            loadCadastradosModificados();
+            loadOriginAndSituation();
+        })();
+    </script>
+
+    <script>
+        document.getElementById('mobileMenuBtn').addEventListener('click', function() {
+            var menu = document.getElementById('mobileMenu');
+            if (menu.classList.contains('hidden')) {
+                menu.classList.remove('hidden');
+                this.innerHTML = '<i class="fas fa-times text-xl"></i>';
+            } else {
+                menu.classList.add('hidden');
+                this.innerHTML = '<i class="fas fa-bars text-xl"></i>';
+            }
+        });
+    </script>
+</body>
+</html>

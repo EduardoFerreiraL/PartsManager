@@ -93,6 +93,28 @@ def atualizacao_em_massa_page():
         </html>
         """)
 
+@router.get("/dashboard", response_class=HTMLResponse, summary="Página de Dashboard")
+def dashboard_page():
+    """Retorna a página de dashboard de análise"""
+    try:
+        with open("../frontend/dashboard.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content)
+    except FileNotFoundError:
+        return HTMLResponse(content="""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Dashboard - Gerenciador de Peças</title>
+        </head>
+        <body>
+            <h1>Dashboard</h1>
+            <p>Arquivo frontend/dashboard.html não encontrado.</p>
+            <p><a href="/">Voltar ao menu principal</a></p>
+        </body>
+        </html>
+        """)
+
 
 
 
