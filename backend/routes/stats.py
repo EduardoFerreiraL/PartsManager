@@ -1,16 +1,48 @@
 """Rotas de estatísticas e informações do banco"""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 import pandas as pd
 from database.connection import get_supabase_client, get_direct_connection, execute_direct_sql
 from config.settings import TABLE_NAME, DIRECT_URL
 from utils.retry import retry_with_backoff
+from auth.deps import get_current_user
 
 router = APIRouter()
 supabase = get_supabase_client()
 
+
+def get_table_structure_impl():
+    """Implementação interna da estrutura da tabela (usada por outros módulos)."""
+    try:
+        response = supabase.table(TABLE_NAME).select("*").limit(1).execute()
+        if response.data:
+            first_row = response.data[0]
+            columns = list(first_row.keys())
+            return {
+                "status": "success",
+                "tabela": TABLE_NAME,
+                "colunas_encontradas": columns,
+                "total_colunas": len(columns),
+                "exemplo_dados": first_row
+            }
+        return {
+            "status": "success",
+            "tabela": TABLE_NAME,
+            "colunas_encontradas": [],
+            "total_colunas": 0,
+            "mensagem": "Tabela vazia - não foi possível determinar a estrutura"
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "tabela": TABLE_NAME,
+            "erro": str(e),
+            "dica": "Verifique se a tabela existe e se tem dados"
+        }
+
+
 @router.get("/health", summary="Verificar Status da API")
 @retry_with_backoff(max_retries=3, base_delay=1)
-def health_check():
+def health_check(current_user: dict = Depends(get_current_user)):
     """Verifica o status da API e conexão com o banco de dados"""
     try:
         response = supabase.table(TABLE_NAME).select("part_number").limit(1).execute()
@@ -43,7 +75,7 @@ def health_check():
         }
 
 @router.get("/direct-connection", summary="Testar Conexão Direta")
-def test_direct_connection():
+def test_direct_connection(current_user: dict = Depends(get_current_user)):
     """Testa a conexão direta ao PostgreSQL usando DIRECT_URL"""
     if not DIRECT_URL:
         return {
@@ -85,7 +117,7 @@ def test_direct_connection():
         }
 
 @router.get("/direct-query", summary="Executar Consulta SQL Direta")
-def execute_direct_query(sql: str = "SELECT COUNT(*) as total FROM pecas"):
+def execute_direct_query(current_user: dict = Depends(get_current_user), sql: str = "SELECT COUNT(*) as total FROM pecas"):
     """Executa uma consulta SQL diretamente no PostgreSQL"""
     if not DIRECT_URL:
         raise HTTPException(status_code=400, detail="DIRECT_URL não configurado")
@@ -110,7 +142,7 @@ def execute_direct_query(sql: str = "SELECT COUNT(*) as total FROM pecas"):
         raise HTTPException(status_code=500, detail=f"Erro ao executar consulta: {str(e)}")
 
 @router.get("/stats", summary="Estatísticas do Banco")
-def get_stats():
+def get_stats(current_user: dict = Depends(get_current_user)):
     """Retorna estatísticas do banco de dados"""
     try:
         response = supabase.table(TABLE_NAME).select("part_number", count="exact").execute()
@@ -137,38 +169,9 @@ def get_stats():
         raise HTTPException(status_code=500, detail=f"Erro ao obter estatísticas: {str(e)}")
 
 @router.get("/table-structure", summary="Estrutura da Tabela")
-def get_table_structure():
+def get_table_structure(current_user: dict = Depends(get_current_user)):
     """Retorna a estrutura real da tabela no Supabase"""
-    try:
-        response = supabase.table(TABLE_NAME).select("*").limit(1).execute()
-        
-        if response.data:
-            first_row = response.data[0]
-            columns = list(first_row.keys())
-            
-            return {
-                "status": "success",
-                "tabela": TABLE_NAME,
-                "colunas_encontradas": columns,
-                "total_colunas": len(columns),
-                "exemplo_dados": first_row
-            }
-        else:
-            return {
-                "status": "success",
-                "tabela": TABLE_NAME,
-                "colunas_encontradas": [],
-                "total_colunas": 0,
-                "mensagem": "Tabela vazia - não foi possível determinar a estrutura"
-            }
-            
-    except Exception as e:
-        return {
-            "status": "error",
-            "tabela": TABLE_NAME,
-            "erro": str(e),
-            "dica": "Verifique se a tabela existe e se tem dados"
-        }
+    return get_table_structure_impl()
 
 
 

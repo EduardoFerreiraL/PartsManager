@@ -115,6 +115,36 @@ def dashboard_page():
         </html>
         """)
 
+@router.get("/login", response_class=HTMLResponse, summary="Página de Login")
+def login_page():
+    """Retorna a página de login"""
+    try:
+        with open("../frontend/login.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content)
+    except FileNotFoundError:
+        return HTMLResponse(content="<h1>Login</h1><p>Arquivo frontend/login.html não encontrado.</p>")
+
+@router.get("/novo-usuario", response_class=HTMLResponse, summary="Página de Novo Usuário")
+def novo_usuario_page():
+    """Retorna a página de cadastro de novo usuário"""
+    try:
+        with open("../frontend/novo-usuario.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content)
+    except FileNotFoundError:
+        return HTMLResponse(content="<h1>Novo usuário</h1><p>Arquivo frontend/novo-usuario.html não encontrado.</p>")
+
+@router.get("/aprovar-usuarios", response_class=HTMLResponse, summary="Página de Aprovar Usuários")
+def aprovar_usuarios_page():
+    """Retorna a página de aprovação de usuários (administradores)"""
+    try:
+        with open("../frontend/aprovar-usuarios.html", "r", encoding="utf-8") as f:
+            html_content = f.read()
+        return HTMLResponse(content=html_content)
+    except FileNotFoundError:
+        return HTMLResponse(content="<h1>Aprovar usuários</h1><p>Arquivo frontend/aprovar-usuarios.html não encontrado.</p>")
+
 
 
 

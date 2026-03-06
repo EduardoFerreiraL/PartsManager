@@ -27,6 +27,17 @@ class NavBar extends HTMLElement {
         
         // Aplica o destaque da aba ativa
         setTimeout(() => this.applyActive(), 0);
+        // Aplica visibilidade por permissão (se usuário já estiver carregado)
+        if (window.currentUser != null) this.applyPermissions(window.currentUser.nivelPermissao);
+    }
+
+    /** Mostra/oculta itens do menu conforme nivelPermissao (0=máx, 3=mín). Visível se nivel <= data-permission-min. */
+    applyPermissions(nivel) {
+        if (nivel == null || nivel === undefined) return;
+        this.querySelectorAll('[data-permission-min]').forEach(el => {
+            const min = parseInt(el.getAttribute('data-permission-min'), 10);
+            el.style.display = (nivel <= min) ? '' : 'none';
+        });
     }
 
     // IMPORTÂNCIA: Carrega o HTML do arquivo navbar.html via Fetch API
@@ -72,25 +83,29 @@ class NavBar extends HTMLElement {
                         <h1 class="text-xl font-bold text-white hidden sm:block">Gerenciador de Peças</h1>
                     </div>
                     <div class="hidden md:flex items-center space-x-1">
-                        <a href="/" data-key="home" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <a href="/" data-key="home" data-permission-min="3" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
                             <i class="fas fa-home text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
                             <span class="font-medium text-white">Menu Principal</span>
                         </a>
-                        <a href="/adicionar" data-key="adicionar" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <a href="/adicionar" data-key="adicionar" data-permission-min="2" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
                             <i class="fas fa-plus text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
                             <span class="font-medium text-white">Adicionar Itens</span>
                         </a>
-                        <a href="/visualizar" data-key="visualizar" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <a href="/visualizar" data-key="visualizar" data-permission-min="3" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
                             <i class="fas fa-search text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
                             <span class="font-medium text-white">Visualizar Itens</span>
                         </a>
-                        <a href="/atualizacao-em-massa" data-key="atualizacao-em-massa" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <a href="/atualizacao-em-massa" data-key="atualizacao-em-massa" data-permission-min="2" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
                             <i class="fas fa-file-excel text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
                             <span class="font-medium text-white">Atualização em massa</span>
                         </a>
-                        <a href="/dashboard" data-key="dashboard" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <a href="/dashboard" data-key="dashboard" data-permission-min="2" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
                             <i class="fas fa-chart-line text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
                             <span class="font-medium text-white">Dashboard</span>
+                        </a>
+                        <a href="/aprovar-usuarios" data-key="aprovar-usuarios" data-permission-min="1" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                            <i class="fas fa-user-check text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                            <span class="font-medium text-white">Aprovar usuários</span>
                         </a>
                     </div>
                     <div class="md:hidden">
@@ -101,25 +116,29 @@ class NavBar extends HTMLElement {
                 </div>
                 <div class="js-mobile-menu md:hidden hidden border-t border-white/20 pt-4 pb-4">
                     <div class="flex flex-col space-y-2">
-                        <a href="/" data-key="home" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <a href="/" data-key="home" data-permission-min="3" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
                             <i class="fas fa-home text-white text-lg mr-3"></i>
                             <span class="font-medium text-white">Menu Principal</span>
                         </a>
-                        <a href="/adicionar" data-key="adicionar" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <a href="/adicionar" data-key="adicionar" data-permission-min="2" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
                             <i class="fas fa-plus text-white text-lg mr-3"></i>
                             <span class="font-medium text-white">Adicionar Itens</span>
                         </a>
-                        <a href="/visualizar" data-key="visualizar" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <a href="/visualizar" data-key="visualizar" data-permission-min="3" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
                             <i class="fas fa-search text-white text-lg mr-3"></i>
                             <span class="font-medium text-white">Visualizar Itens</span>
                         </a>
-                        <a href="/atualizacao-em-massa" data-key="atualizacao-em-massa" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <a href="/atualizacao-em-massa" data-key="atualizacao-em-massa" data-permission-min="2" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
                             <i class="fas fa-file-excel text-white text-lg mr-3"></i>
                             <span class="font-medium text-white">Atualização em massa</span>
                         </a>
-                        <a href="/dashboard" data-key="dashboard" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <a href="/dashboard" data-key="dashboard" data-permission-min="2" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
                             <i class="fas fa-chart-line text-white text-lg mr-3"></i>
                             <span class="font-medium text-white">Dashboard</span>
+                        </a>
+                        <a href="/aprovar-usuarios" data-key="aprovar-usuarios" data-permission-min="1" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                            <i class="fas fa-user-check text-white text-lg mr-3"></i>
+                            <span class="font-medium text-white">Aprovar usuários</span>
                         </a>
                     </div>
                 </div>

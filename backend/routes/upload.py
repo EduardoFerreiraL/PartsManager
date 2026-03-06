@@ -1,5 +1,5 @@
 """Rotas de upload de arquivos Excel"""
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 import pandas as pd
 import io
 from database.connection import get_supabase_client
@@ -8,6 +8,7 @@ from services.excel_service import ExcelService
 from services.validation_service import ValidationService
 from services.pecas_service import PecasService
 from routes import stats
+from auth.deps import require_permission
 
 router = APIRouter()
 excel_service = ExcelService()
@@ -16,7 +17,7 @@ pecas_service = PecasService()
 supabase = get_supabase_client()
 
 @router.post("/upload-excel", summary="Upload e Inserção de Dados")
-async def upload_excel(file: UploadFile = File(...)):
+async def upload_excel(file: UploadFile = File(...), current_user: dict = Depends(require_permission(2))):
     """Recebe arquivo Excel e insere dados no banco"""
     if not file.filename.endswith('.xlsx'):
         raise HTTPException(status_code=400, detail="Apenas arquivos .xlsx são aceitos")
@@ -27,7 +28,7 @@ async def upload_excel(file: UploadFile = File(...)):
         df = pd.read_excel(io.BytesIO(contents))
         
         # Verificar a estrutura da tabela
-        table_structure = stats.get_table_structure()
+        table_structure = stats.get_table_structure_impl()
         if table_structure["status"] == "success" and table_structure["colunas_encontradas"]:
             available_columns = table_structure["colunas_encontradas"]
         else:
@@ -236,7 +237,7 @@ async def upload_excel(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=error_message)
 
 @router.post("/analyze-excel", summary="Analisar Planilha Excel")
-async def analyze_excel(file: UploadFile = File(...)):
+async def analyze_excel(file: UploadFile = File(...), current_user: dict = Depends(require_permission(2))):
     """Analisa a planilha Excel antes do upload para identificar problemas"""
     if not file.filename.endswith('.xlsx'):
         raise HTTPException(status_code=400, detail="Apenas arquivos .xlsx são aceitos")

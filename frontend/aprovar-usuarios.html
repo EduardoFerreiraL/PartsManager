@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aprovar usuários - Gerenciador de Peças</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="config.js"></script>
+    <script src="auth.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: { 50: '#eff6ff', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' },
+                        secondary: { 50: '#f8fafc', 100: '#f1f5f9', 500: '#64748b', 600: '#475569' }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="min-h-screen text-gray-800 relative">
+    <div class="fixed inset-0 z-0">
+        <img src="imagens/fundoDb.jpg" alt="" class="w-full h-full object-cover"
+             onerror="this.style.display='none'; this.nextElementSibling.style.background='linear-gradient(135deg, #1e3a8a, #3730a3, #581c87)'">
+        <div class="absolute inset-0 bg-black bg-opacity-60"></div>
+    </div>
+
+    <nav class="bg-white/10 backdrop-blur-md border-b border-white/20 sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="flex items-center space-x-4">
+                        <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                            <i class="fas fa-cogs text-white text-lg"></i>
+                        </div>
+                        <h1 class="text-xl font-bold text-white hidden sm:block">Gerenciador de Peças</h1>
+                    </a>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <a href="/" class="flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20 text-white">
+                        <i class="fas fa-arrow-left mr-2"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="relative z-10 container mx-auto px-4 py-8">
+        <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl shadow-xl p-6 md:p-8">
+            <h2 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+                <i class="fas fa-user-check"></i> Aprovar usuários
+            </h2>
+            <p class="text-white/80 text-sm mb-6">Usuários aguardando aprovação. Atribua o nível de permissão e clique em Aprovar.</p>
+
+            <div id="message" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
+            <div id="loading" class="text-white/80 py-4">Carregando...</div>
+            <div id="listaContainer" class="hidden overflow-x-auto">
+                <table class="w-full text-left">
+                    <thead>
+                        <tr class="border-b border-white/20 text-white/90 text-sm">
+                            <th class="py-3 pr-4">Nome</th>
+                            <th class="py-3 pr-4">E-mail</th>
+                            <th class="py-3 pr-4">Data solicitação</th>
+                            <th class="py-3 pr-4">Permissão</th>
+                            <th class="py-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaBody" class="text-white/90"></tbody>
+                </table>
+                <p id="emptyMsg" class="hidden py-6 text-white/70 text-center">Nenhum usuário pendente.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const base = window.API_BASE_URL || '/api';
+            const headers = function() {
+                const h = { 'Content-Type': 'application/json' };
+                const t = window.auth && window.auth.getToken();
+                if (t) h['Authorization'] = 'Bearer ' + t;
+                return h;
+            };
+            let currentUser = null;
+
+            function showMessage(msg, isError) {
+                const el = document.getElementById('message');
+                el.textContent = msg;
+                el.className = 'mb-4 p-3 rounded-lg text-sm ' + (isError ? 'bg-red-500/20 border border-red-400/50 text-red-200' : 'bg-green-500/20 border border-green-400/50 text-green-200');
+                el.classList.remove('hidden');
+                setTimeout(function() { el.classList.add('hidden'); }, 5000);
+            }
+
+            function nivelLabel(n) {
+                if (n === 0) return '0 - Máxima';
+                if (n === 1) return '1 - Alta';
+                if (n === 2) return '2 - Média';
+                return '3 - Baixa';
+            }
+
+            async function loadPendentes() {
+                document.getElementById('loading').classList.remove('hidden');
+                document.getElementById('listaContainer').classList.add('hidden');
+                try {
+                    const res = await fetch(base + '/auth/pendentes', { headers: headers() });
+                    if (res.status === 401 || res.status === 403) {
+                        window.location.href = '/login';
+                        return;
+                    }
+                    const list = await res.json();
+                    document.getElementById('loading').classList.add('hidden');
+                    const container = document.getElementById('listaContainer');
+                    const tbody = document.getElementById('listaBody');
+                    const emptyMsg = document.getElementById('emptyMsg');
+                    container.classList.remove('hidden');
+                    tbody.innerHTML = '';
+                    if (!list || list.length === 0) {
+                        emptyMsg.classList.remove('hidden');
+                        return;
+                    }
+                    emptyMsg.classList.add('hidden');
+                    const canAssignZero = currentUser && currentUser.nivelPermissao === 0;
+                    list.forEach(function(u) {
+                        const tr = document.createElement('tr');
+                        tr.className = 'border-b border-white/10';
+                        const created = u.created_at ? new Date(u.created_at).toLocaleString('pt-BR') : '-';
+                        let selectHtml = '<select class="nivel-select bg-white/10 border border-white/20 text-white rounded px-2 py-1 text-sm" data-id="' + u.id + '">';
+                        for (let n = 0; n <= 3; n++) {
+                            const dis = (n === 0 && !canAssignZero) ? ' disabled' : '';
+                            selectHtml += '<option value="' + n + '"' + dis + '>' + nivelLabel(n) + '</option>';
+                        }
+                        selectHtml += '</select>';
+                        tr.innerHTML = '<td class="py-3 pr-4">' + (u.nome || '-') + '</td>' +
+                            '<td class="py-3 pr-4">' + (u.email || '-') + '</td>' +
+                            '<td class="py-3 pr-4">' + created + '</td>' +
+                            '<td class="py-3 pr-4">' + selectHtml + '</td>' +
+                            '<td class="py-3"><button type="button" class="btn-aprovar px-3 py-1 bg-primary-500 hover:bg-primary-600 text-white text-sm rounded-lg" data-id="' + u.id + '">Aprovar</button></td>';
+                        tbody.appendChild(tr);
+                    });
+                    tbody.querySelectorAll('.btn-aprovar').forEach(function(btn) {
+                        btn.addEventListener('click', function() {
+                            const id = parseInt(btn.getAttribute('data-id'), 10);
+                            const row = btn.closest('tr');
+                            const sel = row.querySelector('.nivel-select');
+                            const nivel = parseInt(sel.value, 10);
+                            aprovar(id, nivel, btn);
+                        });
+                    });
+                } catch (_) {
+                    document.getElementById('loading').classList.add('hidden');
+                    showMessage('Erro ao carregar lista.', true);
+                }
+            }
+
+            async function aprovar(userId, nivel, btnEl) {
+                btnEl.disabled = true;
+                btnEl.textContent = '...';
+                try {
+                    const res = await fetch(base + '/auth/aprovar/' + userId, {
+                        method: 'PATCH',
+                        headers: headers(),
+                        body: JSON.stringify({ nivelPermissao: nivel })
+                    });
+                    const data = await res.json().catch(function() { return {}; });
+                    if (res.ok) {
+                        showMessage('Usuário aprovado com sucesso.', false);
+                        loadPendentes();
+                    } else {
+                        showMessage(data.detail || 'Erro ao aprovar.', true);
+                        btnEl.disabled = false;
+                        btnEl.textContent = 'Aprovar';
+                    }
+                } catch (_) {
+                    showMessage('Erro de conexão.', true);
+                    btnEl.disabled = false;
+                    btnEl.textContent = 'Aprovar';
+                }
+            }
+
+            async function init() {
+                const user = await window.auth.checkAuth(true);
+                if (!user) return;
+                if (user.nivelPermissao !== 0 && user.nivelPermissao !== 1) {
+                    window.location.href = '/';
+                    return;
+                }
+                currentUser = user;
+                loadPendentes();
+            }
+            init();
+        })();
+    </script>
+</body>
+</html>

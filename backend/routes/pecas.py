@@ -1,12 +1,13 @@
 """Rotas relacionadas a peças"""
 from datetime import datetime, timezone
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from database.connection import get_supabase_client
 from config.settings import TABLE_NAME
 from services.pecas_service import PecasService
 from services.excel_service import ExcelService
 from services.validation_service import ValidationService
 from utils.retry import retry_with_backoff
+from auth.deps import get_current_user, require_permission
 
 router = APIRouter()
 pecas_service = PecasService()
@@ -17,6 +18,7 @@ supabase = get_supabase_client()
 @router.get("/pecas", summary="Buscar Peças")
 @retry_with_backoff(max_retries=3, base_delay=1)
 def search_pecas(
+    current_user: dict = Depends(get_current_user),
     part_number: str = None,
     description: str = None,
     chinese_description: str = None,
@@ -155,6 +157,7 @@ def search_pecas(
 @router.get("/pecas/count", summary="Contar Peças com Filtros")
 @retry_with_backoff(max_retries=3, base_delay=1)
 def count_pecas(
+    current_user: dict = Depends(get_current_user),
     part_number: str = None,
     description: str = None,
     chinese_description: str = None,
@@ -247,7 +250,7 @@ def count_pecas(
 
 @router.get("/pecas/all", summary="Buscar Todas as Peças")
 @retry_with_backoff(max_retries=3, base_delay=1)
-def get_all_pecas():
+def get_all_pecas(current_user: dict = Depends(get_current_user)):
     """Busca todas as peças sem limitação de quantidade"""
     try:
         response = supabase.table(TABLE_NAME).select("*").execute()
@@ -265,7 +268,7 @@ def get_all_pecas():
         raise HTTPException(status_code=500, detail=f"Erro ao buscar todas as peças: {error_message}")
 
 @router.post("/pecas", summary="Adicionar Nova Peça")
-def add_peca(peca_data: dict):
+def add_peca(peca_data: dict, current_user: dict = Depends(require_permission(2))):
     """Adiciona uma nova peça ao banco de dados"""
     try:
         # Validar campos obrigatórios
@@ -324,7 +327,7 @@ def add_peca(peca_data: dict):
         raise HTTPException(status_code=500, detail=f"Erro ao adicionar peça: {error_message}")
 
 @router.put("/pecas/part_number/{part_number}", summary="Atualizar Peça por Part Number")
-def update_peca_by_part_number(part_number: str, peca_data: dict):
+def update_peca_by_part_number(part_number: str, peca_data: dict, current_user: dict = Depends(require_permission(2))):
     """Atualiza uma peça específica no banco de dados usando part_number como identificador"""
     try:
         try:
@@ -381,7 +384,7 @@ def update_peca_by_part_number(part_number: str, peca_data: dict):
         raise HTTPException(status_code=500, detail=f"Erro ao atualizar peça: {error_message}")
 
 @router.delete("/pecas/part_number/{part_number}", summary="Excluir Peça por Part Number")
-def delete_peca_by_part_number(part_number: str):
+def delete_peca_by_part_number(part_number: str, current_user: dict = Depends(require_permission(2))):
     """Exclui uma peça específica do banco de dados usando part_number como identificador"""
     try:
         try:

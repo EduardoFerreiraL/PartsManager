@@ -18,6 +18,12 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 
 # Define o nome da tabela no Supabase
 TABLE_NAME = "pecas"
+LOGIN_TABLE_NAME = "login"
+
+# JWT e autenticação
+SECRET_KEY = os.getenv("SECRET_KEY", "fallback-dev-change-in-production")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080"))  # 7 dias
 
 
 

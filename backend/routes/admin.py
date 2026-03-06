@@ -1,5 +1,5 @@
 """Rotas administrativas e de debug"""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 import os
 import pandas as pd
 from datetime import datetime
@@ -7,13 +7,14 @@ from database.connection import get_supabase_client, get_direct_connection
 from config.settings import TABLE_NAME, DIRECT_URL
 from services.validation_service import ValidationService
 from routes import stats
+from auth.deps import get_current_user
 
 router = APIRouter()
 supabase = get_supabase_client()
 validation_service = ValidationService()
 
 @router.get("/test-model-compatibility", summary="Testar Compatibilidade do Modelo")
-def test_model_compatibility():
+def test_model_compatibility(current_user: dict = Depends(get_current_user)):
     """Testa se o sistema está pronto para receber o arquivo model.xlsx atualizado"""
     try:
         if not os.path.exists("model.xlsx"):
@@ -25,7 +26,7 @@ def test_model_compatibility():
         
         df = pd.read_excel("model.xlsx", engine='openpyxl')
         
-        table_structure = stats.get_table_structure()
+        table_structure = stats.get_table_structure_impl()
         if table_structure["status"] == "success" and table_structure["colunas_encontradas"]:
             available_columns = table_structure["colunas_encontradas"]
         else:
@@ -75,7 +76,7 @@ def test_model_compatibility():
         }
 
 @router.get("/download-model", summary="Download da Planilha Modelo")
-def download_model_excel():
+def download_model_excel(current_user: dict = Depends(get_current_user)):
     """Endpoint para download da planilha modelo"""
     try:
         model_path = "model.xlsx"
@@ -104,7 +105,7 @@ def download_model_excel():
         raise HTTPException(status_code=500, detail=f"Erro ao baixar arquivo modelo: {str(e)}")
 
 @router.get("/check-table", summary="Verificar/Criar Tabela")
-def check_and_create_table():
+def check_and_create_table(current_user: dict = Depends(get_current_user)):
     """Verifica se a tabela existe e cria se necessário"""
     try:
         response = supabase.table(TABLE_NAME).select("*").limit(1).execute()
@@ -158,7 +159,7 @@ def check_and_create_table():
         }
 
 @router.post("/optimize-database", summary="Otimizar Banco de Dados")
-def optimize_database():
+def optimize_database(current_user: dict = Depends(get_current_user)):
     """Cria índices no banco de dados para otimizar consultas com grandes volumes"""
     try:
         indexes_to_create = [
@@ -255,7 +256,7 @@ def optimize_database():
         }
 
 @router.get("/database-performance", summary="Verificar Performance do Banco")
-def check_database_performance():
+def check_database_performance(current_user: dict = Depends(get_current_user)):
     """Verifica a performance atual do banco de dados"""
     try:
         if DIRECT_URL:
@@ -341,7 +342,7 @@ def check_database_performance():
         }
 
 @router.get("/debug-structure", summary="Debug da Estrutura")
-def debug_structure():
+def debug_structure(current_user: dict = Depends(get_current_user)):
     """Endpoint de debug para verificar a estrutura da tabela"""
     try:
         print("🔍 Iniciando debug da estrutura...")
@@ -396,7 +397,7 @@ def debug_structure():
         }
 
 @router.post("/reload-schema-cache", summary="Recarregar Cache de Esquema")
-def reload_schema_cache():
+def reload_schema_cache(current_user: dict = Depends(get_current_user)):
     """Recarrega o cache de esquema do PostgREST para resolver erro PGRST205"""
     try:
         if DIRECT_URL:
@@ -448,7 +449,7 @@ def reload_schema_cache():
         }
 
 @router.post("/migrate-position-field", summary="Migrar Campo Position")
-def migrate_position_field():
+def migrate_position_field(current_user: dict = Depends(get_current_user)):
     """Adiciona campo position aos registros existentes"""
     try:
         if DIRECT_URL:

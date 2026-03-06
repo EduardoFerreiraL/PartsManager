@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="config.js"></script>
+    <script src="auth.js"></script>
     <!-- Adicionar biblioteca XLSX -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
@@ -56,34 +57,30 @@
                     </h1>
                 </div>
 
-                <!-- Menu de Navegação Principal -->
                 <div class="hidden md:flex items-center space-x-1">
-                    <!-- Botão Menu Principal -->
-                    <a href="/" 
-                       class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                    <a href="/" data-permission-min="3" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
                         <i class="fas fa-home text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
                         <span class="font-medium text-white">Menu Principal</span>
                     </a>
-
-                    <!-- Botão Adicionar Itens -->
-                    <a href="/adicionar" 
-                       class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                    <a href="/adicionar" data-permission-min="2" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
                         <i class="fas fa-plus text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
                         <span class="font-medium text-white">Adicionar Itens</span>
                     </a>
-
-                    <!-- Botão Visualizar Itens -->
-                    <a href="/visualizar" 
-                       class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20 active current-page">
+                    <a href="/visualizar" data-permission-min="3" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20 active current-page">
                         <i class="fas fa-search text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
                         <span class="font-medium text-white">Visualizar Itens</span>
                     </a>
-
-                    <!-- Botão Atualização em massa -->
-                    <a href="/atualizacao-em-massa" 
-                       class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                    <a href="/atualizacao-em-massa" data-permission-min="2" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
                         <i class="fas fa-file-excel text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
                         <span class="font-medium text-white">Atualização em massa</span>
+                    </a>
+                    <a href="/dashboard" data-permission-min="2" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-chart-line text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-medium text-white">Dashboard</span>
+                    </a>
+                    <a href="/aprovar-usuarios" data-permission-min="1" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-user-check text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
+                        <span class="font-medium text-white">Aprovar usuários</span>
                     </a>
                 </div>
 
@@ -99,32 +96,29 @@
             <!-- Menu Mobile Expandido -->
             <div id="mobileMenu" class="md:hidden hidden border-t border-white/20 pt-4 pb-4">
                 <div class="flex flex-col space-y-2">
-                    <!-- Link Menu Principal Mobile -->
-                    <a href="/" 
-                       class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                    <a href="/" data-permission-min="3" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
                         <i class="fas fa-home text-white text-lg mr-3"></i>
                         <span class="font-medium text-white">Menu Principal</span>
                     </a>
-
-                    <!-- Link Adicionar Itens Mobile -->
-                    <a href="/adicionar" 
-                       class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                    <a href="/adicionar" data-permission-min="2" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
                         <i class="fas fa-plus text-white text-lg mr-3"></i>
                         <span class="font-medium text-white">Adicionar Itens</span>
                     </a>
-
-                    <!-- Link Visualizar Itens Mobile -->
-                    <a href="/visualizar" 
-                       class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20 active current-page">
+                    <a href="/visualizar" data-permission-min="3" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20 active current-page">
                         <i class="fas fa-search text-white text-lg mr-3"></i>
                         <span class="font-medium text-white">Visualizar Itens</span>
                     </a>
-
-                    <!-- Link Atualização em massa Mobile -->
-                    <a href="/atualizacao-em-massa" 
-                       class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                    <a href="/atualizacao-em-massa" data-permission-min="2" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
                         <i class="fas fa-file-excel text-white text-lg mr-3"></i>
                         <span class="font-medium text-white">Atualização em massa</span>
+                    </a>
+                    <a href="/dashboard" data-permission-min="2" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-chart-line text-white text-lg mr-3"></i>
+                        <span class="font-medium text-white">Dashboard</span>
+                    </a>
+                    <a href="/aprovar-usuarios" data-permission-min="1" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
+                        <i class="fas fa-user-check text-white text-lg mr-3"></i>
+                        <span class="font-medium text-white">Aprovar usuários</span>
                     </a>
                 </div>
             </div>
@@ -1229,16 +1223,20 @@
             mobileMenu: document.getElementById('mobileMenu')
         };
 
-        // Inicialização da aplicação
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Inicializando aplicação...');
-            console.log('🌐 API_BASE_URL:', API_BASE_URL);
-            console.log('📦 Elementos DOM:', elements);
-            
-            checkApiStatus();
+        // Inicialização da aplicação (exige login)
+        document.addEventListener('DOMContentLoaded', async function() {
+            const user = await auth.checkAuth();
+            if (!user) return;
+            window.currentUser = user;
+            document.querySelectorAll('[data-permission-min]').forEach(function(el) {
+                var min = parseInt(el.getAttribute('data-permission-min'), 10);
+                el.style.display = (user.nivelPermissao <= min) ? '' : 'none';
+            });
+            var apiBlock = document.getElementById('apiStatus') && document.getElementById('apiStatus').closest('.rounded-2xl');
+            if (apiBlock) apiBlock.style.display = (user.nivelPermissao === 0) ? '' : 'none';
+            if (user.nivelPermissao === 0) checkApiStatus();
             setupEventListeners();
-            initNavigation(); // Inicializar navegação
-            // Carregar todos os itens automaticamente
+            initNavigation();
             loadAllItems();
         });
 

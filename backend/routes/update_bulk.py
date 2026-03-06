@@ -1,6 +1,6 @@
 """Rotas de atualização em massa via planilha Excel"""
 from datetime import datetime, timezone
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
 from fastapi.responses import Response
 from pydantic import BaseModel
 import pandas as pd
@@ -9,6 +9,7 @@ import io
 from database.connection import get_supabase_client
 from config.settings import TABLE_NAME
 from routes import stats
+from auth.deps import require_permission
 
 router = APIRouter()
 supabase = get_supabase_client()
@@ -122,7 +123,7 @@ def _validate_update_row(row, linha: int):
 
 
 @router.post("/export-pecas-for-update", summary="Gerar planilha para atualização em massa")
-async def export_pecas_for_update(body: ExportPecasBody):
+async def export_pecas_for_update(body: ExportPecasBody, current_user: dict = Depends(require_permission(2))):
     """
     Gera planilha Excel com as linhas completas dos PNs informados (separados por vírgula).
     Body: { "part_numbers": "32326449, 78456132, 78651235" }
@@ -139,7 +140,7 @@ async def export_pecas_for_update(body: ExportPecasBody):
 
     try:
         # Garantir que colunas existem na tabela (usar nomes exatos)
-        table_structure = stats.get_table_structure()
+        table_structure = stats.get_table_structure_impl()
         if table_structure.get("status") == "success" and table_structure.get("colunas_encontradas"):
             available = {c.lower(): c for c in table_structure["colunas_encontradas"]}
             select_cols = [available[c.lower()] for c in EXPORT_COLUMNS if c.lower() in available]
@@ -196,7 +197,7 @@ async def export_pecas_for_update(body: ExportPecasBody):
 
 
 @router.post("/upload-excel-update", summary="Enviar planilha para atualização em massa")
-async def upload_excel_update(file: UploadFile = File(...)):
+async def upload_excel_update(file: UploadFile = File(...), current_user: dict = Depends(require_permission(2))):
     """
     Recebe planilha Excel com part_number e campos editáveis; atualiza cada linha no banco.
     """
@@ -216,7 +217,7 @@ async def upload_excel_update(file: UploadFile = File(...)):
             )
 
         # Obter nomes reais das colunas na tabela (PostgREST é sensível a maiúsculas/minúsculas)
-        table_structure = stats.get_table_structure()
+        table_structure = stats.get_table_structure_impl()
         table_columns = table_structure.get("colunas_encontradas") or []
         table_col_by_lower = {str(c).lower(): c for c in table_columns}
 

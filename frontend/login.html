@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Gerenciador de Peças</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8'
+                        },
+                        secondary: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            500: '#64748b',
+                            600: '#475569'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="config.js"></script>
+</head>
+<body class="min-h-screen text-gray-800 relative flex items-center justify-center">
+    <div class="fixed inset-0 z-0">
+        <img src="imagens/fundoDb.jpg" alt="Fundo" class="w-full h-full object-cover" 
+             onerror="this.style.display='none'; this.nextElementSibling.style.background='linear-gradient(135deg, #1e3a8a, #3730a3, #581c87)'">
+        <div class="absolute inset-0 bg-black bg-opacity-60"></div>
+    </div>
+
+    <div class="relative z-10 w-full max-w-md mx-4">
+        <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl shadow-xl p-8">
+            <div class="flex justify-center mb-6">
+                <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-cogs text-white text-2xl"></i>
+                </div>
+            </div>
+            <h1 class="text-2xl font-bold text-white text-center mb-2">Gerenciador de Peças</h1>
+            <p class="text-white/80 text-center mb-6">Entre com seu e-mail e senha</p>
+
+            <div id="loginError" class="hidden mb-4 p-3 rounded-lg bg-red-500/20 border border-red-400/50 text-red-200 text-sm"></div>
+
+            <form id="loginForm" class="space-y-4">
+                <div>
+                    <label for="email" class="block text-sm font-medium text-white/90 mb-1">E-mail</label>
+                    <input type="email" id="email" name="email" required
+                           class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                           placeholder="seu.email@xcmg.com.br">
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-white/90 mb-1">Senha</label>
+                    <input type="password" id="password" name="password" required
+                           class="w-full px-4 py-3 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/50 focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                           placeholder="••••••••">
+                </div>
+                <button type="submit" id="submitBtn"
+                        class="w-full py-3 px-4 bg-primary-500 hover:bg-primary-600 text-white font-semibold rounded-lg transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-sign-in-alt"></i> Entrar
+                </button>
+            </form>
+
+            <p class="mt-6 text-center text-white/80 text-sm">
+                Não tem acesso?
+                <a href="/novo-usuario" class="text-primary-400 hover:text-primary-300 font-medium">Novo usuário</a>
+            </p>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
+    <script>
+        (function() {
+            const form = document.getElementById('loginForm');
+            const errorDiv = document.getElementById('loginError');
+            const submitBtn = document.getElementById('submitBtn');
+
+            function showError(msg) {
+                errorDiv.textContent = msg;
+                errorDiv.classList.remove('hidden');
+            }
+            function hideError() {
+                errorDiv.classList.add('hidden');
+            }
+
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                hideError();
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Entrando...';
+
+                const email = document.getElementById('email').value.trim();
+                const password = document.getElementById('password').value;
+                const base = window.API_BASE_URL || '/api';
+
+                try {
+                    const res = await fetch(base + '/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password })
+                    });
+                    const data = await res.json().catch(function() { return {}; });
+
+                    if (res.ok) {
+                        if (data.access_token) window.auth.setToken(data.access_token);
+                        window.currentUser = data.user || null;
+                        const returnUrl = window.auth.getReturnUrl();
+                        window.location.href = returnUrl;
+                        return;
+                    }
+                    if (res.status === 403 && (data.detail || '').toLowerCase().indexOf('aprovação') !== -1) {
+                        showError('Sua solicitação está em análise. Aguarde aprovação dos administradores.');
+                    } else {
+                        showError(data.detail || 'E-mail ou senha incorretos.');
+                    }
+                } catch (_) {
+                    showError('Erro de conexão. Tente novamente.');
+                }
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Entrar';
+            });
+        })();
+    </script>
+</body>
+</html>

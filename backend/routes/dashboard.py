@@ -1,6 +1,7 @@
 """Rotas do Dashboard - comparativos e análises por período"""
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Depends
 from datetime import datetime, date, timedelta
+from auth.deps import require_permission
 from typing import Optional, List
 from collections import defaultdict
 from database.connection import get_direct_connection, execute_direct_sql, get_supabase_client
@@ -153,6 +154,7 @@ def _fetch_supabase_aggregate(
 
 @router.get("/dashboard/cadastrados", summary="Itens cadastrados por período")
 def get_cadastrados(
+    current_user: dict = Depends(require_permission(2)),
     period: str = Query(..., description="year, semester, quarter, month, week, day, range"),
     year: Optional[int] = Query(None),
     semester: Optional[int] = Query(None, ge=1, le=2),
@@ -286,6 +288,7 @@ def get_cadastrados(
 
 @router.get("/dashboard/modificados", summary="Itens modificados por período")
 def get_modificados(
+    current_user: dict = Depends(require_permission(2)),
     period: str = Query(..., description="year, semester, quarter, month, week, day, range"),
     year: Optional[int] = Query(None),
     semester: Optional[int] = Query(None, ge=1, le=2),
@@ -454,6 +457,7 @@ def get_origin(
 
 @router.get("/dashboard/situation-osgt", summary="Contagem por Situation_OSGT")
 def get_situation_osgt(
+    current_user: dict = Depends(require_permission(2)),
     date_from: Optional[str] = Query(None),
     date_to: Optional[str] = Query(None),
 ):
