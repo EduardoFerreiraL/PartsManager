@@ -8,6 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="config.js"></script>
     <script src="auth.js"></script>
+    <script src="user-menu.js"></script>
     <!-- Adicionar biblioteca XLSX -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
@@ -83,6 +84,8 @@
                         <span class="font-medium text-white">Aprovar usuários</span>
                     </a>
                 </div>
+
+                <div id="user-menu-root" class="flex items-center ml-4"></div>
 
                 <!-- Menu Mobile (Hamburger) -->
                 <div class="md:hidden">
@@ -305,8 +308,11 @@
         <div class="container mx-auto px-2 py-6 max-w-full">
         <!-- Header com Navegação -->
         <header class="text-center mb-8">
-            <h1 class="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">
-                <i class="fas fa-search mr-3"></i>Visualizar Itens
+            <h1 class="text-4xl md:text-5xl font-bold text-white drop-shadow-lg flex flex-col md:flex-row items-center justify-center gap-3">
+                <span><i class="fas fa-search mr-3"></i>Visualizar Itens</span>
+                <span id="readOnlyBadge" class="hidden text-sm font-semibold px-3 py-1 rounded-full bg-yellow-400 text-yellow-900 shadow-md">
+                    Somente leitura
+                </span>
             </h1>
             <p class="text-xl text-blue-100 opacity-90">Visualize, pesquise e filtre todas as peças cadastradas no sistema</p>
         </header>
@@ -1179,6 +1185,9 @@
             sortOrder: 'desc' // Ordem de classificação (asc/desc)
         };
 
+        // Flag de permissão para edição (definida após carregar o usuário)
+        let canEdit = true;
+
         // Elementos do DOM
         const elements = {
             checkStatusBtn: document.getElementById('checkStatusBtn'),
@@ -1228,6 +1237,10 @@
             const user = await auth.checkAuth();
             if (!user) return;
             window.currentUser = user;
+
+            // Definir capacidade de edição: apenas níveis 0, 1 e 2 podem editar
+            canEdit = user.nivelPermissao <= 2;
+
             document.querySelectorAll('[data-permission-min]').forEach(function(el) {
                 var min = parseInt(el.getAttribute('data-permission-min'), 10);
                 el.style.display = (user.nivelPermissao <= min) ? '' : 'none';
@@ -1235,6 +1248,24 @@
             var apiBlock = document.getElementById('apiStatus') && document.getElementById('apiStatus').closest('.rounded-2xl');
             if (apiBlock) apiBlock.style.display = (user.nivelPermissao === 0) ? '' : 'none';
             if (user.nivelPermissao === 0) checkApiStatus();
+
+            // Ajustar interface para modo somente leitura quando não pode editar
+            if (!canEdit) {
+                if (elements.addItemBtn) elements.addItemBtn.style.display = 'none';
+                // Esconder botões de histórico de edições e limpar histórico para nível somente leitura
+                const historyButtons = document.querySelectorAll('button[onclick="showHistoryInfo()"], button[onclick="clearEditHistory()"]');
+                historyButtons.forEach(btn => btn.style.display = 'none');
+                // Opcional: esconder instruções detalhadas de edição
+                if (elements.instructionsSection) {
+                    elements.instructionsSection.style.display = 'none';
+                }
+                // Mostrar badge de somente leitura
+                const readOnlyBadge = document.getElementById('readOnlyBadge');
+                if (readOnlyBadge) {
+                    readOnlyBadge.classList.remove('hidden');
+                }
+            }
+
             setupEventListeners();
             initNavigation();
             loadAllItems();
@@ -2328,6 +2359,10 @@
 
         // Funções para o modal de adicionar item
         function showAddItemModal() {
+            if (!canEdit) {
+                showToast('Perfil permite apenas visualização', 'error');
+                return;
+            }
             // Preencher data atual no campo de data de criação
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('addDateCreation').value = today;
@@ -2387,6 +2422,10 @@
         }
         
         function hideAddItemModal() {
+            if (!canEdit) {
+                showToast('Perfil permite apenas visualização', 'error');
+                return;
+            }
             elements.addItemModal.classList.add('hidden');
         }
         
@@ -2440,6 +2479,10 @@
         }
         
         async function saveNewItem() {
+            if (!canEdit) {
+                showToast('Perfil permite apenas visualização', 'error');
+                return;
+            }
             if (!validateAddItemForm()) {
                 return;
             }
@@ -2581,6 +2624,10 @@
 
         // Função para editar célula
         function editCell(cellId, currentValue) {
+            if (!canEdit) {
+                showToast('Perfil permite apenas visualização', 'error');
+                return;
+            }
             const cell = document.getElementById(cellId);
             if (!cell) return;
             
@@ -2795,6 +2842,27 @@
                 }
             } catch (error) {
                 console.error('Erro ao atualizar célula review_date:', error);
+            }
+        }
+
+        // Função para atualizar visualmente a célula added_modified
+        function updateAddedModifiedCell(rowIndex, newAddedModified) {
+            try {
+                // Encontrar a linha especificada na tabela atual
+                const row = document.querySelector(`#excelTable tbody tr:nth-child(${rowIndex + 1})`);
+                if (!row) return;
+
+                // Procurar pela célula que tem data-column="added_modified"
+                const addedModifiedCell = row.querySelector('td[data-column="added_modified"]');
+                if (!addedModifiedCell) return;
+
+                const value = (newAddedModified ?? '').toString();
+                addedModifiedCell.textContent = value;
+                addedModifiedCell.setAttribute('data-value', value);
+
+                console.log(`Added/Modified atualizado na linha ${rowIndex + 1}: ${value}`);
+            } catch (error) {
+                console.error('Erro ao atualizar célula added_modified:', error);
             }
         }
 
@@ -3427,6 +3495,10 @@
                 
                 // Delete para limpar células selecionadas ou excluir linha
                 if (e.key === 'Delete') {
+                    if (!canEdit) {
+                        showToast('Perfil permite apenas visualização', 'error');
+                        return;
+                    }
                     const selectedCells = document.querySelectorAll('#excelTable td.selected');
                     if (selectedCells.length > 0) {
                         // Verificar se alguma célula selecionada é da coluna Part Number (índice 0)
@@ -3452,6 +3524,10 @@
                 
                 // F2 para editar primeira célula selecionada
                 if (e.key === 'F2') {
+                    if (!canEdit) {
+                        showToast('Perfil permite apenas visualização', 'error');
+                        return;
+                    }
                     const selectedCell = document.querySelector('#excelTable td.selected');
                     if (selectedCell) {
                         // Verificar se é a primeira coluna antes de tentar editar
@@ -3641,15 +3717,26 @@
                 
                 if (result.status === 'success') {
                     console.log('✅ Célula salva no banco com sucesso:', result);
-                    
-                    // Atualizar review_date na UI e no appState (definido automaticamente pelo backend)
-                    if (result.peca_atualizada && result.peca_atualizada.review_date) {
-                        const rowIndex = parseInt(cell.getAttribute('data-row'));
-                        const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+
+                    // Atualizar campos gerenciados pelo backend na UI e no appState.
+                    const rowIndex = parseInt(cell.getAttribute('data-row'));
+                    const actualRowIndex = (appState.currentPage - 1) * appState.itemsPerPage + rowIndex;
+                    const updatedPeca = result.peca_atualizada || null;
+
+                    // Atualizar review_date (definido automaticamente pelo backend)
+                    if (updatedPeca && updatedPeca.review_date) {
                         if (appState.allResults[actualRowIndex]) {
-                            appState.allResults[actualRowIndex]['review_date'] = result.peca_atualizada.review_date;
+                            appState.allResults[actualRowIndex]['review_date'] = updatedPeca.review_date;
                         }
-                        updateReviewDateCell(rowIndex, result.peca_atualizada.review_date);
+                        updateReviewDateCell(rowIndex, updatedPeca.review_date);
+                    }
+
+                    // Atualizar added_modified (usuário logado que realizou a atualização)
+                    if (updatedPeca && Object.prototype.hasOwnProperty.call(updatedPeca, 'added_modified')) {
+                        if (appState.allResults[actualRowIndex]) {
+                            appState.allResults[actualRowIndex]['added_modified'] = updatedPeca.added_modified;
+                        }
+                        updateAddedModifiedCell(rowIndex, updatedPeca.added_modified);
                     }
                     
                     // Só mostrar toast se não for um desfazer silencioso
@@ -3872,6 +3959,10 @@
         
         // Função para limpar todo o histórico
         function clearAllHistory() {
+            if (!canEdit) {
+                showToast('Perfil permite apenas visualização', 'error');
+                return;
+            }
             if (confirm('Tem certeza que deseja limpar todo o histórico de edições? Esta ação não pode ser desfeita.')) {
                 appState.globalEditHistory = [];
                 appState.editHistory.clear();
@@ -3884,6 +3975,10 @@
 
         // Função para mostrar modal de confirmação de exclusão
         function showDeleteModal(partNumber, cell) {
+            if (!canEdit) {
+                showToast('Perfil permite apenas visualização', 'error');
+                return;
+            }
             if (!partNumber || partNumber === 'undefined') {
                 showToast('Part Number não encontrado para exclusão.', 'error');
                 return;
@@ -3914,6 +4009,10 @@
 
         // Função para confirmar exclusão da linha
         async function confirmDeleteRow() {
+            if (!canEdit) {
+                showToast('Perfil permite apenas visualização', 'error');
+                return;
+            }
             if (!appState.pendingDeleteRow) {
                 showToast('Erro: Nenhuma linha pendente para exclusão.', 'error');
                 return;

@@ -30,6 +30,7 @@
     </script>
     <script src="config.js"></script>
     <script src="auth.js"></script>
+    <script src="user-menu.js"></script>
 </head>
 <body class="min-h-screen text-gray-800 relative">
     <!-- Imagem de fundo com filtro escuro -->
@@ -83,6 +84,8 @@
                         <span class="font-medium text-white">Aprovar usuários</span>
                     </a>
                 </div>
+
+                <div id="user-menu-root" class="flex items-center ml-4"></div>
 
                 <!-- Menu Mobile (Hamburger) -->
                 <div class="md:hidden">
@@ -155,7 +158,7 @@
         <!-- Menu Principal -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
             <!-- Card Adicionar Itens -->
-            <div class="bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 cursor-pointer group" onclick="window.location.href='/adicionar'">
+            <div class="bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 cursor-pointer group" data-permission-min="2" onclick="window.location.href='/adicionar'">
                 <div class="text-center">
                     <div class="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
                         <i class="fas fa-plus text-white text-3xl"></i>
@@ -183,7 +186,7 @@
             </div>
 
             <!-- Card Atualização em massa -->
-            <div class="bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 cursor-pointer group" onclick="window.location.href='/atualizacao-em-massa'">
+            <div class="bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 cursor-pointer group" data-permission-min="2" onclick="window.location.href='/atualizacao-em-massa'">
                 <div class="text-center">
                     <div class="w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
                         <i class="fas fa-file-excel text-white text-3xl"></i>

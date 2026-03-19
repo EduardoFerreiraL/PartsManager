@@ -80,6 +80,18 @@ async def upload_excel(file: UploadFile = File(...), current_user: dict = Depend
         
         # Limpar dados antes de inserir
         cleaned_data = excel_service.clean_data_for_supabase(data_to_insert, assign_positions=True)
+
+        # Carimba pelo usuário logado (JWT) quando a coluna existir.
+        table_structure = stats.get_table_structure_impl()
+        has_added_modified = False
+        if table_structure.get("status") == "success":
+            cols = [c.lower() for c in (table_structure.get("colunas_encontradas") or []) if isinstance(c, str)]
+            has_added_modified = "added_modified" in cols
+
+        if has_added_modified:
+            user_name = current_user.get("nome")
+            for row in cleaned_data:
+                row["added_modified"] = user_name
         
         # Verificar duplicatas dentro do próprio arquivo primeiro
         seen_pns = set()

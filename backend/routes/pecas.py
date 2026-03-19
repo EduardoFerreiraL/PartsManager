@@ -8,12 +8,27 @@ from services.excel_service import ExcelService
 from services.validation_service import ValidationService
 from utils.retry import retry_with_backoff
 from auth.deps import get_current_user, require_permission
+from routes import stats
 
 router = APIRouter()
 pecas_service = PecasService()
 excel_service = ExcelService()
 validation_service = ValidationService()
 supabase = get_supabase_client()
+
+
+def _column_exists(column_name: str) -> bool:
+    """
+    Verifica se uma coluna existe na tabela do Supabase.
+    Usado para não quebrar ambientes onde a coluna ainda não foi criada.
+    """
+    structure = stats.get_table_structure_impl()
+    cols = [
+        c.lower()
+        for c in (structure.get("colunas_encontradas") or [])
+        if isinstance(c, str)
+    ]
+    return column_name.lower() in cols
 
 @router.get("/pecas", summary="Buscar Peças")
 @retry_with_backoff(max_retries=3, base_delay=1)
@@ -293,6 +308,10 @@ def add_peca(peca_data: dict, current_user: dict = Depends(require_permission(2)
                 peca_data['origin'] = int(peca_data['origin'])
             except (ValueError, TypeError):
                 raise HTTPException(status_code=400, detail="Origin deve ser um número")
+
+        # Carimba pelo usuário logado (JWT) quando a coluna existir.
+        if _column_exists("added_modified"):
+            peca_data["added_modified"] = current_user.get("nome")
         
         # Verificar se part_number já existe
         existing = supabase.table(TABLE_NAME).select("part_number").eq("part_number", peca_data['part_number']).execute()
@@ -335,7 +354,7 @@ def update_peca_by_part_number(part_number: str, peca_data: dict, current_user: 
         except ValueError:
             part_number_int = part_number
         
-        # Validar dados recebidos (campos travados: part_number, date_of_creation, review_date, added_modified)
+        # Validar dados recebidos (campos travados: part_number, date_of_creation, review_date)
         allowed_fields = {
             'chinese_description', 'description', 'ncm', 'origin',
             'requester', 'machine', 'Situation_OSGT'
@@ -365,6 +384,10 @@ def update_peca_by_part_number(part_number: str, peca_data: dict, current_user: 
         
         # Review_date só pode ser mutado pelo sistema: definir automaticamente em toda atualização
         update_data['review_date'] = datetime.now(timezone.utc).date().isoformat()
+
+        # Carimba pelo usuário logado (JWT) quando a coluna existir.
+        if _column_exists("added_modified"):
+            update_data["added_modified"] = current_user.get("nome")
         
         # Atualizar no Supabase
         response = supabase.table(TABLE_NAME).update(update_data).eq("part_number", part_number_int).execute()

@@ -244,6 +244,9 @@ async def upload_excel_update(file: UploadFile = File(...), current_user: dict =
             part_number = validated["part_number"]
             update_data = validated["update_data"].copy()
             update_data["review_date"] = datetime.now(timezone.utc).date().isoformat()
+
+            # Carimba pelo usuário logado (JWT) quando a coluna existir.
+            update_data["added_modified"] = current_user.get("nome")
             update_data = _filter_update_to_table_columns(update_data)
 
             if len(update_data) <= 1 and "review_date" in update_data:

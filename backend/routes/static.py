@@ -24,6 +24,11 @@ def serve_navbar_js():
     """Serve o arquivo navbar.js"""
     return FileResponse(os.path.join(FRONTEND_DIR, "navbar.js"))
 
+@router.get("/user-menu.js", response_class=FileResponse)
+def serve_user_menu_js():
+    """Serve o arquivo user-menu.js"""
+    return FileResponse(os.path.join(FRONTEND_DIR, "user-menu.js"))
+
 @router.get("/script.js", response_class=FileResponse)
 def serve_script_js():
     """Serve o arquivo script.js"""

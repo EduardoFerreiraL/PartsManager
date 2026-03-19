@@ -54,6 +54,7 @@
             if (!res.ok) return null;
             const user = await res.json();
             window.currentUser = user;
+            window.dispatchEvent(new CustomEvent('userReady', { detail: user }));
             return user;
         } catch (_) {
             if (redirectIfUnauthorized) {

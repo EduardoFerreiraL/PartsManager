@@ -108,6 +108,7 @@ class NavBar extends HTMLElement {
                             <span class="font-medium text-white">Aprovar usuários</span>
                         </a>
                     </div>
+                    <div id="user-menu-root" class="flex items-center ml-4"></div>
                     <div class="md:hidden">
                         <button class="js-mobile-menu-btn text-white hover:text-gray-200 transition-colors p-2">
                             <i class="fas fa-bars text-xl"></i>
