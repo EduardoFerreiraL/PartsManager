@@ -77,6 +77,22 @@
         </div>
     </div>
 
+    <style>
+        /* Garante contraste legivel no dropdown de permissao sem depender de hover */
+        .nivel-select {
+            background-color: rgba(15, 23, 42, 0.75);
+            color: #f8fafc;
+            border-color: rgba(148, 163, 184, 0.5);
+        }
+        .nivel-select option {
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .nivel-select option:disabled {
+            color: #94a3b8;
+        }
+    </style>
+
     <script>
         (function() {
             const base = window.API_BASE_URL || '/api';
