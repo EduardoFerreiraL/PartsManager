@@ -132,12 +132,19 @@ def aprovar_usuario(
     body: AprovarRequest,
     current_user: dict = Depends(require_permission(1)),
 ):
-    """Aprova um usuário e atribui nivelPermissao. Apenas níveis 0 e 1. Nível 0 só pode ser atribuído por usuário 0."""
+    """Aprova um usuário e atribui nivelPermissao. Apenas níveis 0 e 1 podem aprovar.
+    Regra: nível 0 atribui 0..3; nível 1 atribui apenas 2 ou 3.
+    """
     nivel_logado = current_user["nivelPermissao"]
     if body.nivelPermissao == 0 and nivel_logado != 0:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Apenas administradores de nível 0 podem atribuir permissão 0",
+        )
+    if nivel_logado == 1 and body.nivelPermissao in (0, 1):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuários de nível 1 só podem atribuir permissões 2 ou 3",
         )
     supabase = get_supabase_client()
     r = (

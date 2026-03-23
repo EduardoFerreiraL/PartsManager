@@ -141,13 +141,14 @@
                     }
                     emptyMsg.classList.add('hidden');
                     const canAssignZero = currentUser && currentUser.nivelPermissao === 0;
+                    const canAssignOne = currentUser && currentUser.nivelPermissao === 0;
                     list.forEach(function(u) {
                         const tr = document.createElement('tr');
                         tr.className = 'border-b border-white/10';
                         const created = u.created_at ? new Date(u.created_at).toLocaleString('pt-BR') : '-';
                         let selectHtml = '<select class="nivel-select bg-white/10 border border-white/20 text-white rounded px-2 py-1 text-sm" data-id="' + u.id + '">';
                         for (let n = 0; n <= 3; n++) {
-                            const dis = (n === 0 && !canAssignZero) ? ' disabled' : '';
+                            const dis = ((n === 0 && !canAssignZero) || (n === 1 && !canAssignOne)) ? ' disabled' : '';
                             selectHtml += '<option value="' + n + '"' + dis + '>' + nivelLabel(n) + '</option>';
                         }
                         selectHtml += '</select>';
