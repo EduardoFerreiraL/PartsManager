@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aprovar usuários - Gerenciador de Peças</title>
+    <title>Gerenciar Usuários - Gerenciador de Peças</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="config.js"></script>
@@ -53,9 +53,9 @@
     <div class="relative z-10 container mx-auto px-4 py-8">
         <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl shadow-xl p-6 md:p-8">
             <h2 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
-                <i class="fas fa-user-check"></i> Aprovar usuários
+                <i class="fas fa-users-cog"></i> Gerenciar Usuários
             </h2>
-            <p class="text-white/80 text-sm mb-6">Usuários aguardando aprovação. Atribua o nível de permissão e clique em Aprovar.</p>
+            <p class="text-white/80 text-sm mb-6">Gerencie usuários cadastrados, níveis de permissão e exclusões com segurança.</p>
 
             <div id="message" class="hidden mb-4 p-3 rounded-lg text-sm"></div>
             <div id="loading" class="text-white/80 py-4">Carregando...</div>
@@ -65,14 +65,14 @@
                         <tr class="border-b border-white/20 text-white/90 text-sm">
                             <th class="py-3 pr-4">Nome</th>
                             <th class="py-3 pr-4">E-mail</th>
-                            <th class="py-3 pr-4">Data solicitação</th>
-                            <th class="py-3 pr-4">Permissão</th>
-                            <th class="py-3"></th>
+                            <th class="py-3 pr-4">Status</th>
+                            <th class="py-3 pr-4">Nível de permissão</th>
+                            <th class="py-3 pr-4">Ações</th>
                         </tr>
                     </thead>
                     <tbody id="listaBody" class="text-white/90"></tbody>
                 </table>
-                <p id="emptyMsg" class="hidden py-6 text-white/70 text-center">Nenhum usuário pendente.</p>
+                <p id="emptyMsg" class="hidden py-6 text-white/70 text-center">Nenhum usuário encontrado.</p>
             </div>
         </div>
     </div>
@@ -116,61 +116,109 @@
                 if (n === 0) return '0 - Máxima';
                 if (n === 1) return '1 - Alta';
                 if (n === 2) return '2 - Média';
-                return '3 - Baixa';
+                if (n === 3) return '3 - Baixa';
+                return 'Pendente';
             }
 
-            async function loadPendentes() {
+            function statusLabel(nivel) {
+                return nivel === null || nivel === undefined ? 'Pendente' : 'Aprovado';
+            }
+
+            function canSetLevel(actorLevel, targetLevel, candidateLevel) {
+                if (actorLevel === 0) return true;
+                if (actorLevel !== 1) return false;
+                if (candidateLevel === 0 || candidateLevel === 1) return false;
+                if (targetLevel === null || targetLevel === undefined) return true; // aprovação pendente
+                return targetLevel === 2 || targetLevel === 3; // alteração só entre 2 e 3
+            }
+
+            function buildLevelSelect(user) {
+                let html = '<select class="nivel-select bg-white/10 border border-white/20 text-white rounded px-2 py-1 text-sm">';
+                for (let n = 0; n <= 3; n++) {
+                    const disabled = canSetLevel(currentUser.nivelPermissao, user.nivelPermissao, n) ? '' : ' disabled';
+                    const selected = user.nivelPermissao === null || user.nivelPermissao === undefined
+                        ? (n === 2 ? ' selected' : '')
+                        : (n === user.nivelPermissao ? ' selected' : '');
+                    html += '<option value="' + n + '"' + selected + disabled + '>' + nivelLabel(n) + '</option>';
+                }
+                html += '</select>';
+                return html;
+            }
+
+            function actionButtons(user) {
+                if (user.nivelPermissao === null || user.nivelPermissao === undefined) {
+                    return '<button type="button" class="btn-aprovar px-3 py-1 bg-primary-500 hover:bg-primary-600 text-white text-sm rounded-lg">Aprovar</button>' +
+                        ' <button type="button" class="btn-excluir px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg">Excluir</button>';
+                }
+                return '<button type="button" class="btn-salvar px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-lg">Salvar nível</button>' +
+                    ' <button type="button" class="btn-excluir px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg">Excluir</button>';
+            }
+
+            function rowHtml(user) {
+                return '<td class="py-3 pr-4">' + (user.nome || '-') + '</td>' +
+                    '<td class="py-3 pr-4">' + (user.email || '-') + '</td>' +
+                    '<td class="py-3 pr-4">' + statusLabel(user.nivelPermissao) + '</td>' +
+                    '<td class="py-3 pr-4">' + buildLevelSelect(user) + '</td>' +
+                    '<td class="py-3">' + actionButtons(user) + '</td>';
+            }
+
+            async function loadUsuarios() {
                 document.getElementById('loading').classList.remove('hidden');
                 document.getElementById('listaContainer').classList.add('hidden');
                 try {
-                    const res = await fetch(base + '/auth/pendentes', { headers: headers() });
+                    const res = await fetch(base + '/auth/usuarios', { headers: headers() });
                     if (res.status === 401 || res.status === 403) {
                         window.location.href = '/login';
                         return;
                     }
                     const list = await res.json();
-                    document.getElementById('loading').classList.add('hidden');
                     const container = document.getElementById('listaContainer');
                     const tbody = document.getElementById('listaBody');
                     const emptyMsg = document.getElementById('emptyMsg');
+
+                    document.getElementById('loading').classList.add('hidden');
                     container.classList.remove('hidden');
                     tbody.innerHTML = '';
+
                     if (!list || list.length === 0) {
                         emptyMsg.classList.remove('hidden');
                         return;
                     }
                     emptyMsg.classList.add('hidden');
-                    const canAssignZero = currentUser && currentUser.nivelPermissao === 0;
-                    const canAssignOne = currentUser && currentUser.nivelPermissao === 0;
+
                     list.forEach(function(u) {
                         const tr = document.createElement('tr');
                         tr.className = 'border-b border-white/10';
-                        const created = u.created_at ? new Date(u.created_at).toLocaleString('pt-BR') : '-';
-                        let selectHtml = '<select class="nivel-select bg-white/10 border border-white/20 text-white rounded px-2 py-1 text-sm" data-id="' + u.id + '">';
-                        for (let n = 0; n <= 3; n++) {
-                            const dis = ((n === 0 && !canAssignZero) || (n === 1 && !canAssignOne)) ? ' disabled' : '';
-                            selectHtml += '<option value="' + n + '"' + dis + '>' + nivelLabel(n) + '</option>';
-                        }
-                        selectHtml += '</select>';
-                        tr.innerHTML = '<td class="py-3 pr-4">' + (u.nome || '-') + '</td>' +
-                            '<td class="py-3 pr-4">' + (u.email || '-') + '</td>' +
-                            '<td class="py-3 pr-4">' + created + '</td>' +
-                            '<td class="py-3 pr-4">' + selectHtml + '</td>' +
-                            '<td class="py-3"><button type="button" class="btn-aprovar px-3 py-1 bg-primary-500 hover:bg-primary-600 text-white text-sm rounded-lg" data-id="' + u.id + '">Aprovar</button></td>';
+                        tr.setAttribute('data-user-id', String(u.id));
+                        tr.innerHTML = rowHtml(u);
                         tbody.appendChild(tr);
-                    });
-                    tbody.querySelectorAll('.btn-aprovar').forEach(function(btn) {
-                        btn.addEventListener('click', function() {
-                            const id = parseInt(btn.getAttribute('data-id'), 10);
-                            const row = btn.closest('tr');
-                            const sel = row.querySelector('.nivel-select');
-                            const nivel = parseInt(sel.value, 10);
-                            aprovar(id, nivel, btn);
-                        });
+
+                        const select = tr.querySelector('.nivel-select');
+                        const btnAprovar = tr.querySelector('.btn-aprovar');
+                        const btnSalvar = tr.querySelector('.btn-salvar');
+                        const btnExcluir = tr.querySelector('.btn-excluir');
+
+                        if (btnAprovar) {
+                            btnAprovar.addEventListener('click', function() {
+                                const nivel = parseInt(select.value, 10);
+                                aprovar(u.id, nivel, btnAprovar);
+                            });
+                        }
+                        if (btnSalvar) {
+                            btnSalvar.addEventListener('click', function() {
+                                const nivel = parseInt(select.value, 10);
+                                atualizarNivel(u.id, nivel, btnSalvar);
+                            });
+                        }
+                        if (btnExcluir) {
+                            btnExcluir.addEventListener('click', function() {
+                                excluirUsuario(u.id, u.nome || u.email || ('ID ' + u.id), btnExcluir);
+                            });
+                        }
                     });
                 } catch (_) {
                     document.getElementById('loading').classList.add('hidden');
-                    showMessage('Erro ao carregar lista.', true);
+                    showMessage('Erro ao carregar usuários.', true);
                 }
             }
 
@@ -184,18 +232,54 @@
                         body: JSON.stringify({ nivelPermissao: nivel })
                     });
                     const data = await res.json().catch(function() { return {}; });
-                    if (res.ok) {
-                        showMessage('Usuário aprovado com sucesso.', false);
-                        loadPendentes();
-                    } else {
-                        showMessage(data.detail || 'Erro ao aprovar.', true);
-                        btnEl.disabled = false;
-                        btnEl.textContent = 'Aprovar';
-                    }
-                } catch (_) {
-                    showMessage('Erro de conexão.', true);
+                    if (!res.ok) throw new Error(data.detail || 'Erro ao aprovar usuário');
+                    showMessage(data.message || 'Usuário aprovado com sucesso.', false);
+                    loadUsuarios();
+                } catch (e) {
+                    showMessage(e.message || 'Erro ao aprovar usuário.', true);
                     btnEl.disabled = false;
                     btnEl.textContent = 'Aprovar';
+                }
+            }
+
+            async function atualizarNivel(userId, nivel, btnEl) {
+                btnEl.disabled = true;
+                btnEl.textContent = '...';
+                try {
+                    const res = await fetch(base + '/auth/usuarios/' + userId + '/nivel', {
+                        method: 'PATCH',
+                        headers: headers(),
+                        body: JSON.stringify({ nivelPermissao: nivel })
+                    });
+                    const data = await res.json().catch(function() { return {}; });
+                    if (!res.ok) throw new Error(data.detail || 'Erro ao atualizar nível');
+                    showMessage(data.message || 'Nível atualizado com sucesso.', false);
+                    loadUsuarios();
+                } catch (e) {
+                    showMessage(e.message || 'Erro ao atualizar nível.', true);
+                    btnEl.disabled = false;
+                    btnEl.textContent = 'Salvar nível';
+                }
+            }
+
+            async function excluirUsuario(userId, userName, btnEl) {
+                const ok = window.confirm('Tem certeza que deseja excluir o usuário "' + userName + '"?');
+                if (!ok) return;
+                btnEl.disabled = true;
+                btnEl.textContent = '...';
+                try {
+                    const res = await fetch(base + '/auth/usuarios/' + userId, {
+                        method: 'DELETE',
+                        headers: headers()
+                    });
+                    const data = await res.json().catch(function() { return {}; });
+                    if (!res.ok) throw new Error(data.detail || 'Erro ao excluir usuário');
+                    showMessage(data.message || 'Usuário excluído com sucesso.', false);
+                    loadUsuarios();
+                } catch (e) {
+                    showMessage(e.message || 'Erro ao excluir usuário.', true);
+                    btnEl.disabled = false;
+                    btnEl.textContent = 'Excluir';
                 }
             }
 
@@ -207,8 +291,9 @@
                     return;
                 }
                 currentUser = user;
-                loadPendentes();
+                loadUsuarios();
             }
+
             init();
         })();
     </script>

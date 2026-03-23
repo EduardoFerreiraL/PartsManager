@@ -42,3 +42,18 @@ class UsuarioPendenteResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class UsuarioAdminResponse(BaseModel):
+    id: int
+    nome: str
+    email: str
+    nivelPermissao: Optional[int]
+    created_at: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class AtualizarNivelRequest(BaseModel):
+    nivelPermissao: int = Field(..., ge=0, le=3)

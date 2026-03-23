@@ -10,6 +10,8 @@ from auth.schemas import (
     UserResponse,
     AprovarRequest,
     UsuarioPendenteResponse,
+    UsuarioAdminResponse,
+    AtualizarNivelRequest,
 )
 from auth.deps import get_current_user, require_permission
 from auth.jwt import create_access_token
@@ -23,6 +25,29 @@ def _hash_password(password: str) -> str:
 
 def _check_password(password: str, hashed: str) -> bool:
     return bcrypt.checkpw(password.encode("utf-8"), hashed.encode("utf-8"))
+
+
+def _can_assign_level(
+    actor_level: int, target_current_level: int | None, new_level: int, *, is_approval: bool
+) -> bool:
+    """Valida regras de atribuição/alteração de nível por perfil logado."""
+    if actor_level == 0:
+        return True
+    if actor_level != 1:
+        return False
+
+    # Nível 1 nunca pode atribuir níveis 0 ou 1
+    if new_level in (0, 1):
+        return False
+
+    # Aprovação de pendente por nível 1: apenas 2 ou 3
+    if is_approval:
+        return True
+
+    # Alteração em usuário já aprovado por nível 1: somente 2 <-> 3
+    if target_current_level not in (2, 3):
+        return False
+    return new_level in (2, 3)
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -136,16 +161,6 @@ def aprovar_usuario(
     Regra: nível 0 atribui 0..3; nível 1 atribui apenas 2 ou 3.
     """
     nivel_logado = current_user["nivelPermissao"]
-    if body.nivelPermissao == 0 and nivel_logado != 0:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Apenas administradores de nível 0 podem atribuir permissão 0",
-        )
-    if nivel_logado == 1 and body.nivelPermissao in (0, 1):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Usuários de nível 1 só podem atribuir permissões 2 ou 3",
-        )
     supabase = get_supabase_client()
     r = (
         supabase.table(LOGIN_TABLE_NAME)
@@ -155,12 +170,135 @@ def aprovar_usuario(
     )
     if not r.data or len(r.data) == 0:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
-    if r.data[0].get("nivelPermissao") is not None:
+    target_level = r.data[0].get("nivelPermissao")
+    if target_level is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Usuário já foi aprovado",
+        )
+    if not _can_assign_level(nivel_logado, target_level, body.nivelPermissao, is_approval=True):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você não tem permissão para atribuir este nível",
         )
     supabase.table(LOGIN_TABLE_NAME).update(
         {"nivelPermissao": body.nivelPermissao}
     ).eq("id", user_id).execute()
     return {"message": "Usuário aprovado com sucesso"}
+
+
+@router.get("/usuarios", response_model=list[UsuarioAdminResponse])
+def listar_usuarios(current_user: dict = Depends(require_permission(1))):
+    """Lista todos os usuários (pendentes e aprovados). Apenas níveis 0 e 1."""
+    supabase = get_supabase_client()
+    r = (
+        supabase.table(LOGIN_TABLE_NAME)
+        .select("id, nome, email, nivelPermissao, created_at")
+        .order("id", desc=False)
+        .execute()
+    )
+    out = []
+    for row in (r.data or []):
+        out.append(
+            UsuarioAdminResponse(
+                id=row["id"],
+                nome=row["nome"],
+                email=row["email"],
+                nivelPermissao=row.get("nivelPermissao"),
+                created_at=row.get("created_at"),
+            )
+        )
+    return out
+
+
+@router.patch("/usuarios/{user_id}/nivel")
+def atualizar_nivel_usuario(
+    user_id: int,
+    body: AtualizarNivelRequest,
+    current_user: dict = Depends(require_permission(1)),
+):
+    """Atualiza nível de usuário já aprovado.
+    Regra: nível 0 atribui 0..3; nível 1 altera apenas entre 2 e 3.
+    """
+    supabase = get_supabase_client()
+    nivel_logado = current_user["nivelPermissao"]
+    logged_id = current_user["id"]
+
+    r = (
+        supabase.table(LOGIN_TABLE_NAME)
+        .select("id, nivelPermissao")
+        .eq("id", user_id)
+        .execute()
+    )
+    if not r.data or len(r.data) == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
+
+    target_level = r.data[0].get("nivelPermissao")
+    if target_level is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Usuário pendente. Use a aprovação inicial.",
+        )
+
+    if user_id == logged_id and body.nivelPermissao != target_level:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Não é permitido alterar o próprio nível de permissão",
+        )
+
+    if not _can_assign_level(nivel_logado, target_level, body.nivelPermissao, is_approval=False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você não tem permissão para definir este nível",
+        )
+
+    supabase.table(LOGIN_TABLE_NAME).update(
+        {"nivelPermissao": body.nivelPermissao}
+    ).eq("id", user_id).execute()
+    return {"message": "Nível de permissão atualizado com sucesso"}
+
+
+@router.delete("/usuarios/{user_id}")
+def excluir_usuario(
+    user_id: int,
+    current_user: dict = Depends(require_permission(1)),
+):
+    """Exclui usuário com regras de segurança.
+    - Sem autoexclusão
+    - Não permite excluir o último usuário nível 0
+    """
+    supabase = get_supabase_client()
+    logged_id = current_user["id"]
+
+    if user_id == logged_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Não é permitido excluir o próprio usuário",
+        )
+
+    r = (
+        supabase.table(LOGIN_TABLE_NAME)
+        .select("id, nivelPermissao")
+        .eq("id", user_id)
+        .execute()
+    )
+    if not r.data or len(r.data) == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
+
+    target_level = r.data[0].get("nivelPermissao")
+    if target_level == 0:
+        lvl0 = (
+            supabase.table(LOGIN_TABLE_NAME)
+            .select("id", count="exact")
+            .eq("nivelPermissao", 0)
+            .execute()
+        )
+        total_lvl0 = lvl0.count or 0
+        if total_lvl0 <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Não é permitido excluir o último usuário de nível 0",
+            )
+
+    supabase.table(LOGIN_TABLE_NAME).delete().eq("id", user_id).execute()
+    return {"message": "Usuário excluído com sucesso"}
