@@ -132,6 +132,10 @@
                 return targetLevel === 2 || targetLevel === 3; // alteração só entre 2 e 3
             }
 
+            function canResetPassword(actorLevel, targetLevel) {
+                return actorLevel === 0 && (targetLevel === 1 || targetLevel === 2 || targetLevel === 3);
+            }
+
             function buildLevelSelect(user) {
                 let html = '<select class="nivel-select bg-white/10 border border-white/20 text-white rounded px-2 py-1 text-sm">';
                 for (let n = 0; n <= 3; n++) {
@@ -146,12 +150,17 @@
             }
 
             function actionButtons(user) {
+                const resetBtn = canResetPassword(currentUser.nivelPermissao, user.nivelPermissao)
+                    ? ' <button type="button" class="btn-senha px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white text-sm rounded-lg">Redefinir senha</button>'
+                    : '';
                 if (user.nivelPermissao === null || user.nivelPermissao === undefined) {
                     return '<button type="button" class="btn-aprovar px-3 py-1 bg-primary-500 hover:bg-primary-600 text-white text-sm rounded-lg">Aprovar</button>' +
-                        ' <button type="button" class="btn-excluir px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg">Excluir</button>';
+                        ' <button type="button" class="btn-excluir px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg">Excluir</button>' +
+                        resetBtn;
                 }
                 return '<button type="button" class="btn-salvar px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded-lg">Salvar nível</button>' +
-                    ' <button type="button" class="btn-excluir px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg">Excluir</button>';
+                    ' <button type="button" class="btn-excluir px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded-lg">Excluir</button>' +
+                    resetBtn;
             }
 
             function rowHtml(user) {
@@ -197,6 +206,7 @@
                         const btnAprovar = tr.querySelector('.btn-aprovar');
                         const btnSalvar = tr.querySelector('.btn-salvar');
                         const btnExcluir = tr.querySelector('.btn-excluir');
+                        const btnSenha = tr.querySelector('.btn-senha');
 
                         if (btnAprovar) {
                             btnAprovar.addEventListener('click', function() {
@@ -213,6 +223,11 @@
                         if (btnExcluir) {
                             btnExcluir.addEventListener('click', function() {
                                 excluirUsuario(u.id, u.nome || u.email || ('ID ' + u.id), btnExcluir);
+                            });
+                        }
+                        if (btnSenha) {
+                            btnSenha.addEventListener('click', function() {
+                                redefinirSenha(u.id, u.nome || u.email || ('ID ' + u.id), btnSenha);
                             });
                         }
                     });
@@ -280,6 +295,39 @@
                     showMessage(e.message || 'Erro ao excluir usuário.', true);
                     btnEl.disabled = false;
                     btnEl.textContent = 'Excluir';
+                }
+            }
+
+            async function redefinirSenha(userId, userName, btnEl) {
+                const novaSenha = window.prompt('Digite a nova senha para "' + userName + '" (mínimo 8 caracteres):');
+                if (novaSenha === null) return;
+                if (!novaSenha || novaSenha.length < 8) {
+                    showMessage('A nova senha deve ter no mínimo 8 caracteres.', true);
+                    return;
+                }
+                const confirmar = window.prompt('Confirme a nova senha:');
+                if (confirmar === null) return;
+                if (confirmar !== novaSenha) {
+                    showMessage('As senhas não conferem.', true);
+                    return;
+                }
+
+                btnEl.disabled = true;
+                btnEl.textContent = '...';
+                try {
+                    const res = await fetch(base + '/auth/usuarios/' + userId + '/senha', {
+                        method: 'PATCH',
+                        headers: headers(),
+                        body: JSON.stringify({ newPassword: novaSenha })
+                    });
+                    const data = await res.json().catch(function() { return {}; });
+                    if (!res.ok) throw new Error(data.detail || 'Erro ao redefinir senha');
+                    showMessage(data.message || 'Senha redefinida com sucesso.', false);
+                    loadUsuarios();
+                } catch (e) {
+                    showMessage(e.message || 'Erro ao redefinir senha.', true);
+                    btnEl.disabled = false;
+                    btnEl.textContent = 'Redefinir senha';
                 }
             }
 

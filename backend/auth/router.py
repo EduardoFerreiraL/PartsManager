@@ -12,6 +12,7 @@ from auth.schemas import (
     UsuarioPendenteResponse,
     UsuarioAdminResponse,
     AtualizarNivelRequest,
+    RedefinirSenhaRequest,
 )
 from auth.deps import get_current_user, require_permission
 from auth.jwt import create_access_token
@@ -302,3 +303,42 @@ def excluir_usuario(
 
     supabase.table(LOGIN_TABLE_NAME).delete().eq("id", user_id).execute()
     return {"message": "Usuário excluído com sucesso"}
+
+
+@router.patch("/usuarios/{user_id}/senha")
+def redefinir_senha_usuario(
+    user_id: int,
+    body: RedefinirSenhaRequest,
+    current_user: dict = Depends(require_permission(0)),
+):
+    """Redefine senha de outro usuário.
+    Apenas nível 0 pode redefinir senha e somente para alvos níveis 1, 2 ou 3.
+    """
+    supabase = get_supabase_client()
+    logged_id = current_user["id"]
+
+    if user_id == logged_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Use a opção de troca de senha da própria conta",
+        )
+
+    r = (
+        supabase.table(LOGIN_TABLE_NAME)
+        .select("id, nivelPermissao")
+        .eq("id", user_id)
+        .execute()
+    )
+    if not r.data or len(r.data) == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuário não encontrado")
+
+    target_level = r.data[0].get("nivelPermissao")
+    if target_level not in (1, 2, 3):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Redefinição permitida apenas para usuários níveis 1, 2 ou 3",
+        )
+
+    hashed = _hash_password(body.newPassword)
+    supabase.table(LOGIN_TABLE_NAME).update({"password": hashed}).eq("id", user_id).execute()
+    return {"message": "Senha redefinida com sucesso"}

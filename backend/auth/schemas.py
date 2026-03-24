@@ -57,3 +57,7 @@ class UsuarioAdminResponse(BaseModel):
 
 class AtualizarNivelRequest(BaseModel):
     nivelPermissao: int = Field(..., ge=0, le=3)
+
+
+class RedefinirSenhaRequest(BaseModel):
+    newPassword: str = Field(..., min_length=8)
