@@ -602,7 +602,8 @@
                 box-sizing: border-box;
             }
             
-            #excelTable td:hover {
+            /* Sem hover cinza em células já selecionadas/editando (evita conflito de fundo com a cor do texto) */
+            #excelTable td:hover:not(.selected):not(.editing) {
                 background-color: #f3f4f6;
             }
             
@@ -619,12 +620,14 @@
             }
             
             #excelTable td.selected {
-                background-color: #dbeafe;
+                background-color: #dbeafe !important;
                 border: 2px solid #3b82f6;
                 position: relative;
+                color: #111827;
             }
             
-            #excelTable td.selected:not(:first-child)::before {
+            /* Overlay só nas colunas que não são part_number (evita empilhar sobre o destaque sólido) */
+            #excelTable td.selected:not([data-column="part_number"])::before {
                 content: '';
                 position: absolute;
                 top: 0;
@@ -635,15 +638,16 @@
                 pointer-events: none;
             }
             
-            #excelTable td.selected:first-child {
-                background-color: #3b82f6;
-                color: white;
+            /* Coluna part_number: !important para vencer bg-white/bg-gray-50/hover do <tr> (Tailwind usa !important) */
+            #excelTable td.selected[data-column="part_number"] {
+                background-color: #2563eb !important;
+                color: #ffffff !important;
                 font-weight: 600;
             }
             
             #excelTable td.active-selection {
-                background-color: #1d4ed8;
-                color: white;
+                background-color: #1d4ed8 !important;
+                color: #ffffff !important;
                 font-weight: 700;
                 border: 3px solid #1e40af;
                 box-shadow: 0 0 0 1px #ffffff;
@@ -1082,6 +1086,23 @@
             #excelTable td:nth-child(1):hover {
                 background-color: #e2e8f0 !important;
                 border-left-color: #64748b;
+            }
+            
+            /* Seleção + hover: precisa vir depois de nth-child(1):hover (mesma especificidade: hover não pode trocar fundo para cinza e manter texto branco) */
+            #excelTable td.selected:hover {
+                background-color: #bfdbfe !important;
+                color: #0f172a !important;
+            }
+            
+            #excelTable td.selected[data-column="part_number"]:hover {
+                background-color: #1d4ed8 !important;
+                color: #ffffff !important;
+                border-left-color: #1e40af;
+            }
+            
+            #excelTable td.active-selection:hover {
+                background-color: #1e40af !important;
+                color: #ffffff !important;
             }
             
             /* Adicionar ícone de bloqueio sutil na primeira coluna */
