@@ -1,10 +1,12 @@
 """Rotas de atualização em massa via planilha Excel"""
 from datetime import datetime, timezone
 from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse
 from pydantic import BaseModel
 import pandas as pd
 import io
+import json
+from pathlib import Path
 
 from database.connection import get_supabase_client
 from config.settings import TABLE_NAME
@@ -37,6 +39,91 @@ ALLOWED_UPDATE_FIELDS = {
     "Situation_OSGT",
 }
 MAX_PART_NUMBERS = 500
+EXPORT_ALL_DIR = Path(__file__).resolve().parents[1] / "tmp_exports"
+EXPORT_ALL_META_FILE = EXPORT_ALL_DIR / "pecas_latest.json"
+EXPORT_ALL_FILE_BASENAME = "pecas"
+
+
+def _format_filename_from_date(dt: datetime) -> str:
+    return f"{EXPORT_ALL_FILE_BASENAME}-{dt.strftime('%d%m%Y')}.xlsx"
+
+
+def _read_export_all_metadata() -> dict:
+    if not EXPORT_ALL_META_FILE.exists():
+        return {"available": False}
+    try:
+        data = json.loads(EXPORT_ALL_META_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {"available": False}
+
+    filepath = data.get("filepath")
+    if not filepath:
+        return {"available": False}
+    file_path = Path(filepath)
+    if not file_path.exists():
+        return {"available": False}
+
+    return {
+        "available": True,
+        "filename": data.get("filename") or file_path.name,
+        "generated_at": data.get("generated_at"),
+        "generated_at_display": data.get("generated_at_display"),
+        "filepath": str(file_path),
+    }
+
+
+def _save_export_all_metadata(file_path: Path, filename: str, generated_at: datetime) -> dict:
+    EXPORT_ALL_DIR.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "filename": filename,
+        "filepath": str(file_path),
+        "generated_at": generated_at.isoformat(),
+        "generated_at_display": generated_at.strftime("%d/%m/%Y %H:%M:%S"),
+    }
+    EXPORT_ALL_META_FILE.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    return {
+        "available": True,
+        "filename": filename,
+        "generated_at": payload["generated_at"],
+        "generated_at_display": payload["generated_at_display"],
+    }
+
+
+def _generate_export_all_file() -> dict:
+    generated_at = datetime.now()
+    filename = _format_filename_from_date(generated_at)
+    file_path = EXPORT_ALL_DIR / filename
+
+    # Limpa arquivos antigos do padrão para manter somente o último gerado
+    if EXPORT_ALL_DIR.exists():
+        for old_file in EXPORT_ALL_DIR.glob(f"{EXPORT_ALL_FILE_BASENAME}-*.xlsx"):
+            if old_file != file_path:
+                try:
+                    old_file.unlink()
+                except Exception:
+                    pass
+
+    response = supabase.table(TABLE_NAME).select("*").order("part_number", desc=False).execute()
+    data = response.data or []
+    df = pd.DataFrame(data)
+
+    if "position" in df.columns:
+        df = df.drop(columns=["position"])
+
+    for col in ["date_of_creation", "review_date", "created_at"]:
+        if col in df.columns and len(df) > 0:
+            try:
+                df[col] = pd.to_datetime(df[col], errors="coerce").dt.strftime("%Y-%m-%d")
+            except Exception:
+                pass
+
+    EXPORT_ALL_DIR.mkdir(parents=True, exist_ok=True)
+    with pd.ExcelWriter(file_path, engine="openpyxl") as writer:
+        df.to_excel(writer, sheet_name="Pecas", index=False)
+
+    meta = _save_export_all_metadata(file_path=file_path, filename=filename, generated_at=generated_at)
+    meta["total_itens"] = len(df.index)
+    return meta
 
 
 class ExportPecasBody(BaseModel):
@@ -194,6 +281,46 @@ async def export_pecas_for_update(body: ExportPecasBody, current_user: dict = De
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao gerar planilha: {str(e)}")
+
+
+@router.get("/export-pecas-all/latest", summary="Metadados da última planilha completa")
+async def export_pecas_all_latest(current_user: dict = Depends(require_permission(3))):
+    """
+    Retorna dados da última planilha completa gerada, se houver.
+    """
+    try:
+        return _read_export_all_metadata()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao consultar última planilha: {str(e)}")
+
+
+@router.get("/export-pecas-all/download", summary="Baixar última planilha completa")
+async def export_pecas_all_download(current_user: dict = Depends(require_permission(3))):
+    """
+    Faz download da última planilha completa gerada.
+    """
+    meta = _read_export_all_metadata()
+    if not meta.get("available"):
+        raise HTTPException(status_code=404, detail="Nenhuma planilha completa foi gerada ainda.")
+
+    file_path = Path(meta["filepath"])
+    return FileResponse(
+        path=file_path,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        filename=meta["filename"],
+    )
+
+
+@router.post("/export-pecas-all/generate", summary="Gerar nova planilha completa")
+async def export_pecas_all_generate(current_user: dict = Depends(require_permission(3))):
+    """
+    Gera uma nova planilha completa com todos os itens, salva no servidor
+    e retorna seus metadados.
+    """
+    try:
+        return _generate_export_all_file()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao gerar planilha completa: {str(e)}")
 
 
 @router.post("/upload-excel-update", summary="Enviar planilha para atualização em massa")

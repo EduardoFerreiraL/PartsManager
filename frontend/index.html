@@ -130,7 +130,7 @@
     
     <!-- Conteúdo principal com z-index para ficar sobre o fundo -->
     <div class="relative z-10">
-    <div class="container mx-auto px-4 py-8 max-w-6xl">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
         <!-- Header -->
         <header class="text-center mb-12">
             <h1 class="text-4xl md:text-5xl font-bold text-white mb-6 drop-shadow-lg">
@@ -155,50 +155,81 @@
             </div>
         </div>
 
-        <!-- Menu Principal -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-            <!-- Card Adicionar Itens -->
-            <div class="bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 cursor-pointer group" data-permission-min="2" onclick="window.location.href='/adicionar'">
-                <div class="text-center">
-                    <div class="w-24 h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <i class="fas fa-plus text-white text-3xl"></i>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-4">Adicionar Itens</h3>
-                    <p class="text-gray-600 mb-6">Faça upload de arquivos Excel para adicionar novas peças ao sistema</p>
-                    <div class="bg-green-50 text-green-700 px-4 py-2 rounded-lg font-medium">
-                        <i class="fas fa-arrow-right mr-2"></i>Acessar
+        <!-- Menu Principal: atalhos em grade 2×2 (telas médias) ou 1×4 (telas largas) -->
+        <section class="mb-10" aria-label="Atalhos do menu principal">
+            <h2 class="text-lg font-semibold text-white/90 mb-4 text-center md:text-left tracking-wide">
+                <i class="fas fa-bolt text-amber-300 mr-2" aria-hidden="true"></i>Ações rápidas
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 lg:gap-6 xl:gap-5 items-stretch">
+                <!-- 1: Adicionar -->
+                <div class="bg-white rounded-2xl p-6 sm:p-7 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group h-full flex flex-col" data-permission-min="2" onclick="window.location.href='/adicionar'">
+                    <div class="text-center flex flex-col flex-1 min-h-0">
+                        <div class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-105 transition-transform duration-300 shadow-lg shadow-green-500/25">
+                            <i class="fas fa-plus text-white text-2xl sm:text-3xl"></i>
+                        </div>
+                        <h3 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">Adicionar Itens</h3>
+                        <p class="text-gray-600 text-sm sm:text-base leading-relaxed flex-1">Envie planilhas Excel para incluir novas peças no sistema.</p>
+                        <div class="mt-5 pt-2 border-t border-gray-100">
+                            <span class="inline-flex items-center justify-center w-full bg-green-50 text-green-700 px-4 py-2.5 rounded-xl font-medium text-sm sm:text-base">
+                                <i class="fas fa-arrow-right mr-2"></i>Acessar
+                            </span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Card Visualizar Itens -->
-            <div class="bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 cursor-pointer group" onclick="window.location.href='/visualizar'">
-                <div class="text-center">
-                    <div class="w-24 h-24 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <i class="fas fa-search text-white text-3xl"></i>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-4">Visualizar Itens</h3>
-                    <p class="text-gray-600 mb-6">Visualize, pesquise e filtre todas as peças cadastradas no sistema</p>
-                    <div class="bg-blue-50 text-blue-700 px-4 py-2 rounded-lg font-medium">
-                        <i class="fas fa-arrow-right mr-2"></i>Acessar
+                <!-- 2: Visualizar -->
+                <div class="bg-white rounded-2xl p-6 sm:p-7 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group h-full flex flex-col" onclick="window.location.href='/visualizar'">
+                    <div class="text-center flex flex-col flex-1 min-h-0">
+                        <div class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-105 transition-transform duration-300 shadow-lg shadow-blue-500/25">
+                            <i class="fas fa-search text-white text-2xl sm:text-3xl"></i>
+                        </div>
+                        <h3 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">Visualizar Itens</h3>
+                        <p class="text-gray-600 text-sm sm:text-base leading-relaxed flex-1">Pesquise, filtre e consulte todas as peças cadastradas.</p>
+                        <div class="mt-5 pt-2 border-t border-gray-100">
+                            <span class="inline-flex items-center justify-center w-full bg-blue-50 text-blue-700 px-4 py-2.5 rounded-xl font-medium text-sm sm:text-base">
+                                <i class="fas fa-arrow-right mr-2"></i>Acessar
+                            </span>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Card Atualização em massa -->
-            <div class="bg-white rounded-2xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 cursor-pointer group" data-permission-min="2" onclick="window.location.href='/atualizacao-em-massa'">
-                <div class="text-center">
-                    <div class="w-24 h-24 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <i class="fas fa-file-excel text-white text-3xl"></i>
+                <!-- 3: Atualização em massa -->
+                <div class="bg-white rounded-2xl p-6 sm:p-7 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group h-full flex flex-col" data-permission-min="2" onclick="window.location.href='/atualizacao-em-massa'">
+                    <div class="text-center flex flex-col flex-1 min-h-0">
+                        <div class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-105 transition-transform duration-300 shadow-lg shadow-amber-500/25">
+                            <i class="fas fa-file-excel text-white text-2xl sm:text-3xl"></i>
+                        </div>
+                        <h3 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">Atualização em massa</h3>
+                        <p class="text-gray-600 text-sm sm:text-base leading-relaxed flex-1">Gere planilha por PNs, edite e envie para atualizar várias peças de uma vez.</p>
+                        <div class="mt-5 pt-2 border-t border-gray-100">
+                            <span class="inline-flex items-center justify-center w-full bg-amber-50 text-amber-700 px-4 py-2.5 rounded-xl font-medium text-sm sm:text-base">
+                                <i class="fas fa-arrow-right mr-2"></i>Acessar
+                            </span>
+                        </div>
                     </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-4">Atualização em massa</h3>
-                    <p class="text-gray-600 mb-6">Gere uma planilha por PNs, edite e envie para atualizar várias peças de uma vez</p>
-                    <div class="bg-amber-50 text-amber-700 px-4 py-2 rounded-lg font-medium">
-                        <i class="fas fa-arrow-right mr-2"></i>Acessar
+                </div>
+
+                <!-- 4: Exportar base completa -->
+                <div class="bg-white rounded-2xl p-6 sm:p-7 shadow-xl transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 h-full flex flex-col ring-1 ring-indigo-100/80">
+                    <div class="text-center flex flex-col flex-1 min-h-0">
+                        <div class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-indigo-400 to-indigo-700 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-indigo-500/25">
+                            <i class="fas fa-file-download text-white text-2xl sm:text-3xl"></i>
+                        </div>
+                        <h3 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">Exportar base completa</h3>
+                        <p class="text-gray-600 text-sm sm:text-base leading-relaxed">Baixe a última planilha ou gere uma nova com todos os itens.</p>
+                        <p id="exportLastGeneratedInfo" class="text-xs sm:text-sm text-gray-500 mt-2 mb-4 min-h-[2.5rem] flex items-center justify-center">Carregando status da última geração...</p>
+                        <div class="mt-auto flex flex-col gap-2.5 w-full max-w-xs mx-auto">
+                            <button type="button" id="downloadLastExportBtn" class="bg-indigo-50 text-indigo-700 px-4 py-2.5 rounded-xl font-medium text-sm hover:bg-indigo-100 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed">
+                                <i class="fas fa-download mr-2"></i>Baixar última planilha
+                            </button>
+                            <button type="button" id="generateNewExportBtn" class="bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-medium text-sm hover:bg-indigo-700 transition-all duration-300">
+                                <i class="fas fa-cog mr-2"></i>Gerar nova planilha
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </section>
 
         <!-- Estatísticas Rápidas -->
         <div class="bg-white rounded-2xl p-6 shadow-xl">
@@ -355,6 +386,9 @@
             totalPecas: document.getElementById('totalPecas'),
             sistemaStatus: document.getElementById('sistemaStatus'),
             bancoStatus: document.getElementById('bancoStatus'),
+            downloadLastExportBtn: document.getElementById('downloadLastExportBtn'),
+            generateNewExportBtn: document.getElementById('generateNewExportBtn'),
+            exportLastGeneratedInfo: document.getElementById('exportLastGeneratedInfo'),
             // Elementos da navegação
             mobileMenuBtn: document.getElementById('mobileMenuBtn'),
             mobileMenu: document.getElementById('mobileMenu')
@@ -371,7 +405,124 @@
             if (user.nivelPermissao === 0) checkApiStatus();
             refreshStats();
             initNavigation();
+            bindExportAllActions();
+            loadLatestExportAllInfo();
         });
+
+        function getApiBase() {
+            return (typeof API_BASE_URL !== 'undefined' && API_BASE_URL) ? API_BASE_URL : '/api';
+        }
+
+        function updateExportInfoText(message, isError = false) {
+            if (!elements.exportLastGeneratedInfo) return;
+            elements.exportLastGeneratedInfo.textContent = message;
+            elements.exportLastGeneratedInfo.className = isError
+                ? 'text-sm text-red-600 mb-5'
+                : 'text-sm text-gray-500 mb-5';
+        }
+
+        function setGenerateExportLoading(isLoading) {
+            if (!elements.generateNewExportBtn) return;
+            elements.generateNewExportBtn.disabled = isLoading;
+            elements.generateNewExportBtn.innerHTML = isLoading
+                ? '<i class="fas fa-spinner fa-spin mr-2"></i>Gerando planilha...'
+                : '<i class="fas fa-cog mr-2"></i>Gerar nova planilha';
+        }
+
+        async function loadLatestExportAllInfo() {
+            if (!elements.downloadLastExportBtn || !elements.exportLastGeneratedInfo) return;
+            updateExportInfoText('Consultando última planilha gerada...');
+            elements.downloadLastExportBtn.disabled = true;
+            try {
+                const response = await fetch(`${getApiBase()}/export-pecas-all/latest`);
+                if (!response.ok) throw new Error('Falha ao consultar status');
+                const data = await response.json();
+                if (data.available) {
+                    updateExportInfoText(`Última geração: ${data.generated_at_display || 'data indisponível'}`);
+                    elements.downloadLastExportBtn.disabled = false;
+                } else {
+                    updateExportInfoText('Nenhuma planilha gerada ainda. Clique em "Gerar nova planilha".');
+                }
+            } catch (error) {
+                updateExportInfoText('Não foi possível consultar a última geração agora.', true);
+            }
+        }
+
+        async function generateNewExportAll() {
+            setGenerateExportLoading(true);
+            updateExportInfoText('Gerando planilha completa. Isso pode levar alguns instantes...');
+            try {
+                const response = await fetch(`${getApiBase()}/export-pecas-all/generate`, { method: 'POST' });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Erro ao gerar planilha completa.');
+                }
+                updateExportInfoText(`Última geração: ${data.generated_at_display || 'agora mesmo'}`);
+                if (elements.downloadLastExportBtn) elements.downloadLastExportBtn.disabled = false;
+            } catch (error) {
+                updateExportInfoText(error.message || 'Falha ao gerar a planilha completa.', true);
+            } finally {
+                setGenerateExportLoading(false);
+            }
+        }
+
+        function getExportAuthHeaders() {
+            if (typeof auth !== 'undefined' && auth.getAuthHeader) {
+                return auth.getAuthHeader();
+            }
+            return {};
+        }
+
+        async function downloadLatestExportAll() {
+            if (!elements.downloadLastExportBtn) return;
+            const btn = elements.downloadLastExportBtn;
+            const prevHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Baixando...';
+            try {
+                const res = await fetch(`${getApiBase()}/export-pecas-all/download`, {
+                    headers: Object.assign({}, getExportAuthHeaders())
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(function() { return { detail: res.statusText }; });
+                    var msg = err.detail;
+                    if (typeof msg === 'object' && msg !== null) msg = JSON.stringify(msg);
+                    updateExportInfoText(msg || 'Erro ao baixar a planilha.', true);
+                    return;
+                }
+                const blob = await res.blob();
+                var filename = 'pecas.xlsx';
+                var cd = res.headers.get('Content-Disposition');
+                if (cd) {
+                    var star = cd.match(/filename\*=UTF-8''([^;]+)/i);
+                    if (star) {
+                        try { filename = decodeURIComponent(star[1].trim()); } catch (e) { /* keep default */ }
+                    } else {
+                        var m = cd.match(/filename="([^"]+)"/i) || cd.match(/filename=([^;\s]+)/i);
+                        if (m) filename = m[1].replace(/"/g, '');
+                    }
+                }
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(a.href);
+            } catch (e) {
+                updateExportInfoText('Erro ao baixar: ' + e.message, true);
+            } finally {
+                btn.innerHTML = prevHtml;
+                btn.disabled = false;
+            }
+        }
+
+        function bindExportAllActions() {
+            if (elements.generateNewExportBtn) {
+                elements.generateNewExportBtn.addEventListener('click', generateNewExportAll);
+            }
+            if (elements.downloadLastExportBtn) {
+                elements.downloadLastExportBtn.addEventListener('click', downloadLatestExportAll);
+            }
+        }
         function applyNavPermissions(nivel) {
             document.querySelectorAll('[data-permission-min]').forEach(function(el) {
                 var min = parseInt(el.getAttribute('data-permission-min'), 10);
