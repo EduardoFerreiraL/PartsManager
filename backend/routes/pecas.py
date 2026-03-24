@@ -1,6 +1,10 @@
 """Rotas relacionadas a peças"""
+import re
 from datetime import datetime, timezone
+from typing import List, Optional, Tuple, Union
+
 from fastapi import APIRouter, HTTPException, Depends
+from pydantic import BaseModel, Field
 from database.connection import get_supabase_client
 from config.settings import TABLE_NAME
 from services.pecas_service import PecasService
@@ -15,6 +19,62 @@ pecas_service = PecasService()
 excel_service = ExcelService()
 validation_service = ValidationService()
 supabase = get_supabase_client()
+
+MAX_PART_NUMBERS_BULK = 500
+
+
+class ByPartNumbersBody(BaseModel):
+    """Corpo da busca em lote: texto colado e/ou lista de valores."""
+
+    part_numbers_raw: str = ""
+    part_numbers: List[Union[str, int]] = Field(default_factory=list)
+
+
+def _tokenize_part_numbers_input(
+    raw: str, part_numbers: List[Union[str, int]]
+) -> List[str]:
+    tokens: List[str] = []
+    if raw and raw.strip():
+        # Espaços, quebras de linha (Excel), tab, vírgula e ; como separadores
+        tokens.extend(
+            t.strip()
+            for t in re.split(r"[\s,;]+", raw.strip())
+            if t and str(t).strip()
+        )
+    for p in part_numbers or []:
+        s = str(p).strip()
+        if s:
+            tokens.append(s)
+    return tokens
+
+
+def _parse_part_number_token(token: str) -> Optional[int]:
+    t = token.strip()
+    if not t:
+        return None
+    try:
+        return int(float(t))
+    except (ValueError, TypeError):
+        return None
+
+
+def _ordered_unique_part_numbers(
+    tokens: List[str],
+) -> Tuple[List[int], List[str]]:
+    """Retorna (lista única ordenada pela primeira ocorrência, tokens inválidos)."""
+    ordered: List[int] = []
+    seen: set = set()
+    invalid: List[str] = []
+    for tok in tokens:
+        val = _parse_part_number_token(tok)
+        if val is None:
+            if tok.strip():
+                invalid.append(tok.strip())
+            continue
+        if val not in seen:
+            seen.add(val)
+            ordered.append(val)
+    return ordered, invalid
 
 
 def _column_exists(column_name: str) -> bool:
@@ -281,6 +341,73 @@ def get_all_pecas(current_user: dict = Depends(get_current_user)):
     except Exception as e:
         error_message = str(e)
         raise HTTPException(status_code=500, detail=f"Erro ao buscar todas as peças: {error_message}")
+
+
+@router.post("/pecas/by-part-numbers", summary="Buscar peças por lista de Part Numbers")
+@retry_with_backoff(max_retries=3, base_delay=1)
+def search_pecas_by_part_numbers(
+    body: ByPartNumbersBody,
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Recebe Part Numbers colados (Excel: uma coluna, quebras de linha, vírgulas, etc.)
+    e retorna as linhas completas na ordem solicitada, com lista dos não encontrados.
+    """
+    tokens = _tokenize_part_numbers_input(
+        body.part_numbers_raw or "", body.part_numbers or []
+    )
+    if not tokens:
+        raise HTTPException(
+            status_code=400,
+            detail="Informe ao menos um Part Number (cole a lista ou envie part_numbers).",
+        )
+
+    ordered_unique, invalid_tokens = _ordered_unique_part_numbers(tokens)
+
+    if not ordered_unique:
+        raise HTTPException(
+            status_code=400,
+            detail="Nenhum Part Number válido encontrado na entrada.",
+        )
+
+    if len(ordered_unique) > MAX_PART_NUMBERS_BULK:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Máximo de {MAX_PART_NUMBERS_BULK} Part Numbers por requisição.",
+        )
+
+    try:
+        response = (
+            supabase.table(TABLE_NAME)
+            .select("*")
+            .in_("part_number", ordered_unique)
+            .execute()
+        )
+        data = response.data or []
+        filtered_data = pecas_service.filter_position_from_data(data)
+        order_map = {pn: i for i, pn in enumerate(ordered_unique)}
+        filtered_data.sort(
+            key=lambda r: order_map.get(r.get("part_number"), 10**9)
+        )
+
+        found_pns = {r.get("part_number") for r in filtered_data}
+        not_found = [pn for pn in ordered_unique if pn not in found_pns]
+
+        return {
+            "status": "success",
+            "pecas": filtered_data,
+            "total_encontrado": len(filtered_data),
+            "total_solicitado": len(ordered_unique),
+            "not_found_part_numbers": not_found,
+            "tokens_invalidos": invalid_tokens,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Erro na busca em lote: {str(e)}"
+        )
+
 
 @router.post("/pecas", summary="Adicionar Nova Peça")
 def add_peca(peca_data: dict, current_user: dict = Depends(require_permission(2))):
