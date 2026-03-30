@@ -43,7 +43,7 @@
     </div>
     
     <!-- BARRA DE NAVEGAÇÃO -->
-    <nav class="bg-slate-900/75 backdrop-blur-lg border-b border-white/15 shadow-lg shadow-black/30 sticky top-0 z-50">
+    <nav id="mainNavbar" class="bg-slate-900/75 backdrop-blur-lg border-b border-white/15 shadow-lg shadow-black/30 sticky top-0 z-50">
         <div class="container mx-auto px-4">
             <div class="flex items-center justify-between h-16">
                 <!-- Logo/Título do Sistema -->
@@ -500,9 +500,9 @@
                 </div>
             </div>
             
-            <div class="overflow-x-auto">
+            <div id="tableScrollContainer" class="overflow-x-auto">
                 <table class="w-full border-collapse" id="excelTable">
-                    <thead id="tableHeader" class="bg-primary-500 text-white sticky top-0 z-10">
+                    <thead id="tableHeader" class="bg-primary-500 text-white">
                         <!-- Cabeçalhos serão inseridos dinamicamente -->
                     </thead>
                     <tbody id="tableBody" class="divide-y divide-gray-200">
@@ -532,6 +532,14 @@
         <div id="loadingMessage" class="hidden bg-white rounded-2xl p-8 shadow-xl text-center">
             <div class="inline-block w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mb-4"></div>
             <p class="text-lg text-gray-600">Carregando resultados...</p>
+        </div>
+    </div>
+
+    <div id="tableHeaderOverlay" class="table-header-overlay hidden" aria-hidden="true">
+        <div id="tableHeaderOverlayScroller" class="table-header-overlay-scroller">
+            <table id="tableHeaderOverlayTable" class="w-full border-collapse">
+                <thead id="tableHeaderOverlayHead"></thead>
+            </table>
         </div>
     </div>
 
@@ -566,6 +574,10 @@
         // Adicionar estilos CSS para Excel
         const style = document.createElement('style');
         style.textContent = `
+            :root {
+                --table-sticky-top: 64px;
+            }
+
             #excelTable {
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
                 font-size: 14px;
@@ -580,9 +592,35 @@
                 border: 1px solid #e5e7eb;
                 background: linear-gradient(135deg, #3b82f6, #2563eb);
                 color: white;
-                position: sticky;
-                top: 0;
-                z-index: 10;
+                position: relative;
+                z-index: 1;
+            }
+
+            .table-header-overlay {
+                position: fixed;
+                top: var(--table-sticky-top);
+                left: 0;
+                right: 0;
+                z-index: 40;
+                pointer-events: none;
+            }
+
+            .table-header-overlay.hidden {
+                display: none;
+            }
+
+            .table-header-overlay-scroller {
+                overflow: hidden;
+            }
+
+            #tableHeaderOverlayTable th {
+                padding: 8px 12px;
+                text-align: left;
+                font-weight: 600;
+                border: 1px solid #e5e7eb;
+                background: linear-gradient(135deg, #3b82f6, #2563eb);
+                color: white;
+                white-space: nowrap;
             }
             
             #excelTable td {
@@ -1234,6 +1272,12 @@
 
         // Elementos do DOM
         const elements = {
+            navbar: document.getElementById('mainNavbar'),
+            tableScrollContainer: document.getElementById('tableScrollContainer'),
+            tableHeaderOverlay: document.getElementById('tableHeaderOverlay'),
+            tableHeaderOverlayScroller: document.getElementById('tableHeaderOverlayScroller'),
+            tableHeaderOverlayHead: document.getElementById('tableHeaderOverlayHead'),
+            excelTable: document.getElementById('excelTable'),
             checkStatusBtn: document.getElementById('checkStatusBtn'),
             apiStatus: document.getElementById('apiStatus'),
             searchBtn: document.getElementById('searchBtn'),
@@ -1276,6 +1320,12 @@
             mobileMenu: document.getElementById('mobileMenu')
         };
 
+        const stickyHeaderState = {
+            active: false,
+            navResizeObserver: null,
+            tableResizeObserver: null
+        };
+
         // Inicialização da aplicação (exige login)
         document.addEventListener('DOMContentLoaded', async function() {
             const user = await auth.checkAuth();
@@ -1312,8 +1362,122 @@
 
             setupEventListeners();
             initNavigation();
+            initStickyTableHeader();
             loadAllItems();
         });
+
+        function updateStickyTableOffset() {
+            const navHeight = elements.navbar ? Math.ceil(elements.navbar.getBoundingClientRect().height) : 64;
+            document.documentElement.style.setProperty('--table-sticky-top', `${navHeight}px`);
+            if (elements.tableHeaderOverlay) {
+                elements.tableHeaderOverlay.style.top = `${navHeight}px`;
+            }
+            updateFloatingHeaderVisibility();
+        }
+
+        function initStickyTableHeader() {
+            updateStickyTableOffset();
+            window.addEventListener('resize', updateStickyTableOffset);
+            window.addEventListener('scroll', updateFloatingHeaderVisibility, { passive: true });
+
+            if (elements.tableScrollContainer) {
+                elements.tableScrollContainer.addEventListener('scroll', syncFloatingHeaderHorizontalScroll, { passive: true });
+            }
+
+            if (elements.navbar && 'ResizeObserver' in window) {
+                stickyHeaderState.navResizeObserver = new ResizeObserver(updateStickyTableOffset);
+                stickyHeaderState.navResizeObserver.observe(elements.navbar);
+            }
+
+            if (elements.excelTable && 'ResizeObserver' in window) {
+                stickyHeaderState.tableResizeObserver = new ResizeObserver(() => {
+                    syncFloatingHeaderMetrics();
+                    updateFloatingHeaderVisibility();
+                });
+                stickyHeaderState.tableResizeObserver.observe(elements.excelTable);
+            }
+        }
+
+        function syncFloatingHeaderHorizontalScroll() {
+            if (!elements.tableScrollContainer || !elements.tableHeaderOverlayScroller) return;
+            elements.tableHeaderOverlayScroller.scrollLeft = elements.tableScrollContainer.scrollLeft;
+        }
+
+        function hideFloatingHeader() {
+            stickyHeaderState.active = false;
+            if (elements.tableHeaderOverlay) {
+                elements.tableHeaderOverlay.classList.add('hidden');
+            }
+        }
+
+        function syncFloatingHeaderMetrics() {
+            if (!elements.resultsContainer || !elements.tableHeaderOverlay || !elements.tableHeaderOverlayScroller || !elements.excelTable) return;
+
+            const resultsRect = elements.resultsContainer.getBoundingClientRect();
+            const tableRect = elements.excelTable.getBoundingClientRect();
+            const scrollerWidth = Math.max(0, resultsRect.width - 16);
+
+            elements.tableHeaderOverlay.style.left = `${resultsRect.left + 8}px`;
+            elements.tableHeaderOverlay.style.width = `${scrollerWidth}px`;
+            elements.tableHeaderOverlayScroller.style.width = `${scrollerWidth}px`;
+            elements.tableHeaderOverlayScroller.scrollLeft = elements.tableScrollContainer ? elements.tableScrollContainer.scrollLeft : 0;
+
+            const sourceHeaders = elements.tableHeader ? elements.tableHeader.querySelectorAll('th') : [];
+            const overlayHeaders = elements.tableHeaderOverlayHead ? elements.tableHeaderOverlayHead.querySelectorAll('th') : [];
+            if (!sourceHeaders.length || sourceHeaders.length !== overlayHeaders.length) return;
+
+            overlayHeaders.forEach((th, idx) => {
+                const sourceWidth = Math.ceil(sourceHeaders[idx].getBoundingClientRect().width);
+                th.style.width = `${sourceWidth}px`;
+                th.style.minWidth = `${sourceWidth}px`;
+                th.style.maxWidth = `${sourceWidth}px`;
+            });
+
+            const tableWidth = Math.ceil(tableRect.width);
+            const overlayTable = document.getElementById('tableHeaderOverlayTable');
+            if (overlayTable) {
+                overlayTable.style.width = `${tableWidth}px`;
+                overlayTable.style.minWidth = `${tableWidth}px`;
+            }
+        }
+
+        function renderFloatingHeader() {
+            if (!elements.tableHeader || !elements.tableHeaderOverlayHead) return;
+
+            const sourceRow = elements.tableHeader.querySelector('tr');
+            if (!sourceRow) {
+                hideFloatingHeader();
+                elements.tableHeaderOverlayHead.innerHTML = '';
+                return;
+            }
+
+            elements.tableHeaderOverlayHead.innerHTML = sourceRow.outerHTML;
+            syncFloatingHeaderMetrics();
+            syncFloatingHeaderHorizontalScroll();
+        }
+
+        function updateFloatingHeaderVisibility() {
+            if (!elements.resultsContainer || !elements.tableHeader || !elements.tableBody || !elements.tableHeaderOverlay) return;
+            if (elements.resultsContainer.style.display === 'none' || !elements.tableBody.children.length) {
+                hideFloatingHeader();
+                return;
+            }
+
+            const navHeight = elements.navbar ? Math.ceil(elements.navbar.getBoundingClientRect().height) : 64;
+            const tableRect = elements.excelTable.getBoundingClientRect();
+            const sourceHeaderRow = elements.tableHeader.querySelector('tr');
+            const headerHeight = sourceHeaderRow ? Math.ceil(sourceHeaderRow.getBoundingClientRect().height) : 44;
+            const shouldStick = tableRect.top <= navHeight && tableRect.bottom > navHeight + headerHeight;
+
+            if (!shouldStick) {
+                hideFloatingHeader();
+                return;
+            }
+
+            stickyHeaderState.active = true;
+            elements.tableHeaderOverlay.classList.remove('hidden');
+            syncFloatingHeaderMetrics();
+        }
 
         // FUNÇÕES DE NAVEGAÇÃO
         // Função para inicializar a navegação
@@ -1341,6 +1505,8 @@
                 elements.mobileMenu.classList.remove('hidden');
                 elements.mobileMenu.classList.add('mobile-menu-enter');
                 elements.mobileMenuBtn.innerHTML = '<i class="fas fa-times text-xl"></i>';
+                updateStickyTableOffset();
+                updateFloatingHeaderVisibility();
             } else {
                 // Esconder menu
                 closeMobileMenu();
@@ -1355,6 +1521,8 @@
                     elements.mobileMenu.classList.add('hidden');
                     elements.mobileMenu.classList.remove('mobile-menu-enter', 'mobile-menu-exit');
                     elements.mobileMenuBtn.innerHTML = '<i class="fas fa-bars text-xl"></i>';
+                    updateStickyTableOffset();
+                    updateFloatingHeaderVisibility();
                 }, 300);
             }
         }
@@ -1938,6 +2106,7 @@
                 `;
                 
                 elements.resultsContainer.style.display = 'none';
+                hideFloatingHeader();
                 return;
             }
 
@@ -1955,6 +2124,7 @@
             });
             headerHTML += '</tr>';
             elements.tableHeader.innerHTML = headerHTML;
+            renderFloatingHeader();
 
             // Criar corpo da tabela com células editáveis
             let bodyHTML = '';
@@ -2013,6 +2183,8 @@
             // Mostrar container de resultados
             elements.resultsContainer.style.display = 'block';
             elements.searchResults.innerHTML = '';
+            syncFloatingHeaderMetrics();
+            updateFloatingHeaderVisibility();
 
             // Atualizar botões de paginação
             updatePaginationButtons();
