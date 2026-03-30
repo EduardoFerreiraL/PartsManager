@@ -193,12 +193,6 @@
             <div class="mb-4 h-80">
                 <canvas id="chartCadastrados"></canvas>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-white/90 text-sm" id="tableCadastrados">
-                    <thead><tr><th class="text-left py-2">Período</th><th class="text-right py-2">Quantidade</th></tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
         </section>
 
         <!-- Modificados -->
@@ -206,12 +200,6 @@
             <h3 class="text-lg font-semibold text-white mb-4">Itens modificados no período</h3>
             <div class="mb-4 h-80">
                 <canvas id="chartModificados"></canvas>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-white/90 text-sm" id="tableModificados">
-                    <thead><tr><th class="text-left py-2">Período</th><th class="text-right py-2">Quantidade</th></tr></thead>
-                    <tbody></tbody>
-                </table>
             </div>
         </section>
 
@@ -313,13 +301,66 @@
                 document.getElementById('periodDateWrap').classList.toggle('hidden', type !== 'week' && type !== 'day');
             }
 
-            function updateTable(id, rows, labelKey, countKey) {
-                const tbody = document.querySelector('#' + id + ' tbody');
-                tbody.innerHTML = rows.map(r => '<tr><td class="py-1">' + formatLabel(r[labelKey]) + '</td><td class="text-right py-1">' + r[countKey] + '</td></tr>').join('');
-            }
-
             const CHART_TEXT_COLOR = '#f1f5f9';
             const CHART_GRID_COLOR = 'rgba(255,255,255,0.15)';
+            const barValueLabelPlugin = {
+                id: 'barValueLabelPlugin',
+                afterDatasetsDraw(chart) {
+                    if (chart.config.type !== 'bar') return;
+                    const ctx = chart.ctx;
+                    const dataset = chart.data.datasets[0];
+                    if (!dataset || !dataset.data) return;
+
+                    const meta = chart.getDatasetMeta(0);
+                    ctx.save();
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.font = '600 12px sans-serif';
+
+                    meta.data.forEach((bar, index) => {
+                        const value = dataset.data[index];
+                        if (value == null) return;
+                        const yTop = bar.y;
+                        const yBase = bar.base;
+                        const barHeight = Math.abs(yBase - yTop);
+                        const y = barHeight >= 20 ? (yTop + yBase) / 2 : yTop - 10;
+                        ctx.fillText(String(value), bar.x, y);
+                    });
+                    ctx.restore();
+                }
+            };
+            const doughnutCenterTotalPlugin = {
+                id: 'doughnutCenterTotalPlugin',
+                afterDatasetsDraw(chart) {
+                    if (chart.config.type !== 'doughnut') return;
+                    const dataset = chart.data.datasets[0];
+                    if (!dataset || !dataset.data) return;
+
+                    const total = dataset.data.reduce((acc, val) => acc + (Number(val) || 0), 0);
+                    const meta = chart.getDatasetMeta(0);
+                    const firstArc = meta && meta.data && meta.data[0];
+                    if (!firstArc) return;
+
+                    const ctx = chart.ctx;
+                    const cx = firstArc.x;
+                    const cy = firstArc.y;
+
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.font = '500 12px sans-serif';
+                    ctx.fillText('Total', cx, cy - 10);
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.font = '700 22px sans-serif';
+                    ctx.fillText(String(total), cx, cy + 12);
+                    ctx.restore();
+                }
+            };
+            if (typeof Chart !== 'undefined') {
+                Chart.register(barValueLabelPlugin, doughnutCenterTotalPlugin);
+            }
 
             function updateChartBar(canvasId, data, title, chartRef) {
                 const ctx = document.getElementById(canvasId).getContext('2d');
@@ -335,7 +376,9 @@
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
+                        plugins: {
+                            legend: { display: false }
+                        },
                         scales: {
                             x: {
                                 ticks: { color: CHART_TEXT_COLOR, font: { size: 12 } },
@@ -395,8 +438,6 @@
 
                     chartCadastrados = updateChartBar('chartCadastrados', rowsCad, 'Cadastrados', chartCadastrados);
                     chartModificados = updateChartBar('chartModificados', rowsMod, 'Modificados', chartModificados);
-                    updateTable('tableCadastrados', rowsCad, 'label', 'count');
-                    updateTable('tableModificados', rowsMod, 'label', 'count');
                 } catch (e) {
                     showError(e.message || 'Falha ao carregar dados. Verifique se DIRECT_URL está configurado no backend.');
                 }
