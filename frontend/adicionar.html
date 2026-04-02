@@ -710,6 +710,142 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
+        const UPLOAD_EXCEL_BODY_PREVIEW_LEN = 500;
+
+        function escapeHtml(str) {
+            if (str == null) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        const UPLOAD_COLUMN_LABELS_PT = {
+            date_of_creation: 'Data de criação',
+            review_date: 'Data de revisão',
+            part_number: 'Part number',
+            description: 'Descrição',
+            chinese_description: 'Descrição chinesa',
+            ncm: 'NCM',
+            origin: 'Origem',
+            requester: 'Solicitante',
+            machine: 'Máquina',
+            Situation_OSGT: 'Situação OSGT',
+            added_modified: 'Adicionado/modificado',
+            position: 'Posição'
+        };
+
+        function humanizeUploadError(rawDetailString) {
+            const technicalFull = String(rawDetailString || '');
+            const lower = technicalFull.toLowerCase();
+
+            const colNotNull = technicalFull.match(/null value in column "([^"]+)"/i);
+            if (colNotNull || /violates not-null constraint/i.test(technicalFull)) {
+                const col = colNotNull ? colNotNull[1] : null;
+                const label = col && UPLOAD_COLUMN_LABELS_PT[col] ? UPLOAD_COLUMN_LABELS_PT[col] : col;
+                const summary = label
+                    ? 'A coluna "' + label + '" é obrigatória no banco de dados e aparece vazia em pelo menos uma linha. Preencha todos os valores, salve o Excel e tente novamente.'
+                    : 'Um ou mais campos obrigatórios estão vazios na planilha. Preencha os dados exigidos pelo sistema, salve o arquivo e envie novamente.';
+                return { title: 'Campo obrigatório vazio', summary: summary, technicalFull: technicalFull };
+            }
+
+            if (/duplicate key|23505|unique constraint/i.test(technicalFull)) {
+                return {
+                    title: 'Registro duplicado',
+                    summary: 'Já existe um registro com os mesmos dados que o banco não permite repetir (por exemplo, o mesmo part number). Remova duplicatas na planilha ou ajuste os dados e envie novamente.',
+                    technicalFull: technicalFull
+                };
+            }
+
+            if (/foreign key/i.test(lower)) {
+                return {
+                    title: 'Referência inválida',
+                    summary: 'Algum valor na planilha aponta para um dado que não existe ou não é aceito nas regras do banco. Verifique os valores das colunas relacionadas.',
+                    technicalFull: technicalFull
+                };
+            }
+
+            if (/invalid input syntax/i.test(lower)) {
+                return {
+                    title: 'Formato de dado incorreto',
+                    summary: 'Alguma célula tem formato ou tipo incompatível com o esperado (por exemplo, texto onde deveria ser número ou data). Confira as colunas numéricas e de data.',
+                    technicalFull: technicalFull
+                };
+            }
+
+            return {
+                title: 'Não foi possível salvar a planilha',
+                summary: 'O servidor retornou um erro ao gravar os dados. Revise a planilha (colunas, tipos e campos obrigatórios) ou abra "Detalhes técnicos" abaixo para mais informações.',
+                technicalFull: technicalFull
+            };
+        }
+
+        function showStructuredUploadError(payload) {
+            const el = elements.uploadMessage;
+            el.className = 'mt-6 p-4 rounded-lg font-medium relative bg-red-100 text-red-800 border border-red-200';
+            el.innerHTML = '';
+
+            const closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.className = 'absolute top-2 right-2 text-gray-500 hover:text-gray-700 transition-colors';
+            closeBtn.setAttribute('aria-label', 'Fechar');
+            closeBtn.innerHTML = '<i class="fas fa-times text-lg"></i>';
+            closeBtn.addEventListener('click', closeMessage);
+
+            const main = document.createElement('div');
+            main.className = 'pr-8 text-left';
+
+            const titleEl = document.createElement('h3');
+            titleEl.className = 'text-lg font-semibold text-red-900 mb-2';
+            titleEl.textContent = payload.title || 'Erro';
+
+            const summaryEl = document.createElement('p');
+            summaryEl.className = 'text-base text-red-800 mb-3';
+            summaryEl.textContent = payload.summary || '';
+
+            const details = document.createElement('details');
+            details.className = 'mt-2';
+            const detailsSummary = document.createElement('summary');
+            detailsSummary.className = 'cursor-pointer text-sm text-red-700 font-medium select-none';
+            detailsSummary.textContent = 'Detalhes técnicos';
+            const pre = document.createElement('pre');
+            pre.className = 'text-xs mt-2 overflow-auto max-h-40 whitespace-pre-wrap break-words text-red-900 bg-red-50/80 p-3 rounded border border-red-200';
+            pre.textContent = payload.technicalFull && payload.technicalFull.trim() ? payload.technicalFull : '(sem detalhes)';
+
+            details.appendChild(detailsSummary);
+            details.appendChild(pre);
+            main.appendChild(titleEl);
+            main.appendChild(summaryEl);
+            main.appendChild(details);
+            el.appendChild(closeBtn);
+            el.appendChild(main);
+        }
+
+        function formatUploadErrorDetail(detail, fallback) {
+            if (detail == null) return fallback;
+            if (typeof detail === 'string') return detail;
+            if (Array.isArray(detail)) {
+                const parts = detail.map(function (item) {
+                    if (item && typeof item === 'object' && item.msg != null) return String(item.msg);
+                    try {
+                        return JSON.stringify(item);
+                    } catch (e) {
+                        return String(item);
+                    }
+                });
+                return parts.length ? parts.join('; ') : fallback;
+            }
+            if (typeof detail === 'object' && detail.message != null) return String(detail.message);
+            return fallback;
+        }
+
+        function truncateUploadBodyPreview(text, maxLen) {
+            if (!text || text.length <= maxLen) return text || '';
+            return text.slice(0, maxLen) + '…';
+        }
+
         // Upload de arquivo com progresso
         async function handleFileUpload(event) {
             event.preventDefault();
@@ -733,6 +869,7 @@
         // Iniciar processo de upload com simulação de progresso
         async function startUploadProcess(file) {
             const startTime = Date.now();
+            const uploadExcelUrl = `${API_BASE_URL}/upload-excel`;
             
             // Mostrar modal de progresso
             showProgressModal(file);
@@ -744,32 +881,77 @@
                 const formData = new FormData();
                 formData.append('file', file);
                 
-                // Fazer upload real
-                const response = await fetch(`${API_BASE_URL}/upload-excel`, {
+                const response = await fetch(uploadExcelUrl, {
                     method: 'POST',
                     body: formData
                 });
                 
-                const result = await response.json();
+                const rawBody = await response.text();
+                let result = null;
+                try {
+                    result = rawBody.trim() === '' ? null : JSON.parse(rawBody);
+                } catch (parseErr) {
+                    clearInterval(progressInterval);
+                    hideProgressModal();
+                    console.error('[upload-excel] Resposta não é JSON válido', {
+                        url: uploadExcelUrl,
+                        status: response.status,
+                        statusText: response.statusText,
+                        fileName: file.name,
+                        fileSize: file.size,
+                        bodyPreview: truncateUploadBodyPreview(rawBody, UPLOAD_EXCEL_BODY_PREVIEW_LEN),
+                        parseError: parseErr.message
+                    });
+                    showMessage(
+                        `Resposta inválida do servidor (HTTP ${response.status}). Tente novamente ou contate o suporte se persistir.`,
+                        'error'
+                    );
+                    return;
+                }
+                
                 const endTime = Date.now();
                 const totalTime = Math.round((endTime - startTime) / 1000);
                 
-                // Parar simulação de progresso
                 clearInterval(progressInterval);
                 
                 if (response.ok) {
-                    // Mostrar modal de sucesso
                     showSuccessModal(result, totalTime);
                 } else {
-                    // Mostrar erro
                     hideProgressModal();
-                    showMessage(result.detail || 'Erro ao processar o arquivo.', 'error');
+                    const fallbackMsg = 'Erro ao processar o arquivo.';
+                    const userMsg = formatUploadErrorDetail(result && result.detail, fallbackMsg);
+                    console.error('[upload-excel] Erro HTTP', {
+                        url: uploadExcelUrl,
+                        status: response.status,
+                        statusText: response.statusText,
+                        fileName: file.name,
+                        fileSize: file.size,
+                        detail: result && result.detail !== undefined ? result.detail : undefined,
+                        bodyPreview: truncateUploadBodyPreview(rawBody, UPLOAD_EXCEL_BODY_PREVIEW_LEN)
+                    });
+                    showStructuredUploadError(humanizeUploadError(userMsg));
                 }
             } catch (error) {
                 clearInterval(progressInterval);
                 hideProgressModal();
-                showMessage('Erro de conexão com o servidor.', 'error');
-                console.error('Erro no upload:', error);
+                const isNetwork =
+                    error instanceof TypeError ||
+                    (typeof error.message === 'string' &&
+                        (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')));
+                showMessage(
+                    isNetwork
+                        ? 'Não foi possível conectar ao servidor. Verifique sua rede e se a API está no ar.'
+                        : 'Falha ao enviar o arquivo: ' + error.message,
+                    'error'
+                );
+                console.error('[upload-excel] Exceção no upload', {
+                    name: error.name,
+                    message: error.message,
+                    stack: error.stack,
+                    url: uploadExcelUrl,
+                    fileName: file.name,
+                    fileSize: file.size
+                });
             }
         }
 
@@ -937,7 +1119,7 @@
                     <i class="fas fa-times text-lg"></i>
                 </button>
                 <div class="text-center">
-                    <p class="text-lg">${message}</p>
+                    <p class="text-lg">${escapeHtml(message)}</p>
                 </div>
             `;
         }
