@@ -470,6 +470,13 @@
             }
         }
 
+        function modeloPecasModelFilename() {
+            const d = new Date();
+            const p = (n) => String(n).padStart(2, '0');
+            const stamp = `${p(d.getDate())}${p(d.getMonth() + 1)}${d.getFullYear()}${p(d.getHours())}${p(d.getMinutes())}`;
+            return `modelo_peças${stamp}.xlsx`;
+        }
+
         // Função para baixar arquivo modelo
         async function downloadModel() {
             try {
@@ -482,7 +489,7 @@
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = 'modelo_pecas.xlsx';
+                    a.download = modeloPecasModelFilename();
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url);
@@ -509,7 +516,7 @@
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.href = url;
-                    a.download = 'modelo_pecas.xlsx';
+                    a.download = modeloPecasModelFilename();
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url);
