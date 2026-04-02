@@ -3198,7 +3198,8 @@
         }
         
         function getColumnValidation(columnName) {
-            switch(columnName) {
+            const normalizedColumn = normalizeColumnName(columnName);
+            switch(normalizedColumn) {
                 case 'ncm':
                     return validateNCM;
                 case 'origin':
@@ -3214,7 +3215,8 @@
         }
         
         function getColumnTypeMessage(columnName) {
-            switch(columnName) {
+            const normalizedColumn = normalizeColumnName(columnName);
+            switch(normalizedColumn) {
                 case 'ncm':
                     return 'NCM deve conter apenas números (máximo 8 dígitos)';
                 case 'origin':
@@ -3227,6 +3229,16 @@
                 default:
                     return 'Formato inválido';
             }
+        }
+
+        function getSituationOSGTOptions() {
+            return ['', 'RASCUNHO', 'ENVIADO OSGT', 'DESATIVADO'];
+        }
+
+        function normalizeColumnName(columnName) {
+            if (!columnName) return columnName;
+            if (columnName === 'situation_osgt') return 'Situation_OSGT';
+            return columnName;
         }
 
         // Colunas travadas: não podem ser editadas pelo usuário (review_date só é atualizado pelo sistema)
@@ -3242,6 +3254,7 @@
             if (!cell) return;
             
             const column = cell.getAttribute('data-column');
+            const normalizedColumn = normalizeColumnName(column);
             if (NON_EDITABLE_COLUMNS.includes(column)) {
                 showToast('Este campo não pode ser editado.', 'info');
                 return;
@@ -3261,120 +3274,152 @@
             
             // Adicionar classe de edição
             cell.classList.add('editing');
-            
-            // Criar textarea de edição para suportar múltiplas linhas
-            const textarea = document.createElement('textarea');
-            textarea.value = actualCurrentValue; // Usar o valor atual da célula
-            textarea.className = 'excel-input';
-            textarea.rows = 1;
-            
-            // Armazenar o valor atual como "original" para o histórico
-            textarea.setAttribute('data-original-value', actualCurrentValue);
-            
-            // Substituir conteúdo da célula
-            cell.innerHTML = '';
-            cell.appendChild(textarea);
-            
-            // Definir altura inicial mínima
-            textarea.style.height = '100px';
-            
-            textarea.focus();
-            textarea.select();
-            
-            // Ajustar altura automaticamente baseado no conteúdo e validar entrada
-            textarea.addEventListener('input', function() {
-                // Resetar altura para calcular corretamente
-                this.style.height = '100px';
-                // Ajustar para o conteúdo, mas manter mínimo de 100px
-                const newHeight = Math.max(this.scrollHeight, 100);
-                this.style.height = Math.min(newHeight, 300) + 'px';
-                
-                // Aplicar validação em tempo real
-                const column = cell.getAttribute('data-column');
-                const validator = getColumnValidation(column);
-                
-                if (validator) {
-                    const isValid = validator(this.value);
-                    
-                    // Aplicar estilo visual baseado na validação
-                    if (this.value.trim() === '') {
-                        // Campo vazio - remover estilos de validação
-                        this.style.borderColor = '';
-                        this.style.backgroundColor = '';
-                    } else if (isValid) {
-                        // Valor válido - borda verde
-                        this.style.borderColor = '#10b981';
-                        this.style.backgroundColor = '#f0fdf4';
-                    } else {
-                        // Valor inválido - borda vermelha
-                        this.style.borderColor = '#ef4444';
-                        this.style.backgroundColor = '#fef2f2';
+
+            if (normalizedColumn === 'Situation_OSGT') {
+                const normalizedValue = (actualCurrentValue === '-' || actualCurrentValue === 'null') ? '' : (actualCurrentValue || '');
+                const select = document.createElement('select');
+                select.className = 'excel-input';
+                select.setAttribute('data-original-value', normalizedValue);
+
+                getSituationOSGTOptions().forEach((optionValue) => {
+                    const option = document.createElement('option');
+                    option.value = optionValue;
+                    option.textContent = optionValue === '' ? '(vazio)' : optionValue;
+                    if (optionValue === normalizedValue) {
+                        option.selected = true;
                     }
-                }
-            });
-            
-            // Ajustar altura inicial baseada no conteúdo
-            setTimeout(() => {
+                    select.appendChild(option);
+                });
+
+                cell.innerHTML = '';
+                cell.appendChild(select);
+
+                select.focus();
+                select.addEventListener('change', () => saveCell(cellId, select.value, normalizedValue));
+                select.addEventListener('blur', () => saveCell(cellId, select.value, normalizedValue));
+                select.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        saveCell(cellId, select.value, normalizedValue);
+                    } else if (e.key === 'Escape') {
+                        cancelEdit(cellId, normalizedValue);
+                    }
+                });
+            } else {
+                // Criar textarea de edição para suportar múltiplas linhas
+                const textarea = document.createElement('textarea');
+                textarea.value = actualCurrentValue; // Usar o valor atual da célula
+                textarea.className = 'excel-input';
+                textarea.rows = 1;
+                
+                // Armazenar o valor atual como "original" para o histórico
+                textarea.setAttribute('data-original-value', actualCurrentValue);
+                
+                // Substituir conteúdo da célula
+                cell.innerHTML = '';
+                cell.appendChild(textarea);
+                
+                // Definir altura inicial mínima
                 textarea.style.height = '100px';
-                const newHeight = Math.max(textarea.scrollHeight, 100);
-                textarea.style.height = Math.min(newHeight, 300) + 'px';
-            }, 0);
-            
-            // Eventos do textarea
-            textarea.addEventListener('blur', () => saveCell(cellId, textarea.value, actualCurrentValue));
-            textarea.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    saveCell(cellId, textarea.value, actualCurrentValue);
-                } else if (e.key === 'Escape') {
-                    cancelEdit(cellId, actualCurrentValue);
+                
+                textarea.focus();
+                textarea.select();
+                
+                // Ajustar altura automaticamente baseado no conteúdo e validar entrada
+                textarea.addEventListener('input', function() {
+                    // Resetar altura para calcular corretamente
+                    this.style.height = '100px';
+                    // Ajustar para o conteúdo, mas manter mínimo de 100px
+                    const newHeight = Math.max(this.scrollHeight, 100);
+                    this.style.height = Math.min(newHeight, 300) + 'px';
+                    
+                    // Aplicar validação em tempo real
+                    const column = cell.getAttribute('data-column');
+                    const validator = getColumnValidation(column);
+                    
+                    if (validator) {
+                        const isValid = validator(this.value);
+                        
+                        // Aplicar estilo visual baseado na validação
+                        if (this.value.trim() === '') {
+                            // Campo vazio - remover estilos de validação
+                            this.style.borderColor = '';
+                            this.style.backgroundColor = '';
+                        } else if (isValid) {
+                            // Valor válido - borda verde
+                            this.style.borderColor = '#10b981';
+                            this.style.backgroundColor = '#f0fdf4';
+                        } else {
+                            // Valor inválido - borda vermelha
+                            this.style.borderColor = '#ef4444';
+                            this.style.backgroundColor = '#fef2f2';
+                        }
+                    }
+                });
+                
+                // Ajustar altura inicial baseada no conteúdo
+                setTimeout(() => {
+                    textarea.style.height = '100px';
+                    const newHeight = Math.max(textarea.scrollHeight, 100);
+                    textarea.style.height = Math.min(newHeight, 300) + 'px';
+                }, 0);
+                
+                // Eventos do textarea
+                textarea.addEventListener('blur', () => saveCell(cellId, textarea.value, actualCurrentValue));
+                textarea.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        saveCell(cellId, textarea.value, actualCurrentValue);
+                    } else if (e.key === 'Escape') {
+                        cancelEdit(cellId, actualCurrentValue);
+                    }
+                });
+                
+                // Validação específica para coluna NCM - aceitar apenas números
+                if (normalizedColumn === 'ncm') {
+                    textarea.addEventListener('keypress', (e) => {
+                        // Permitir apenas números, backspace, delete, tab, enter, escape
+                        const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+                        if (!allowedKeys.includes(e.key) && !/^\d$/.test(e.key)) {
+                            e.preventDefault();
+                            showToast('NCM deve conter apenas números!', 'warning');
+                        }
+                    });
+                    
+                    // Limitar a 8 dígitos
+                    textarea.addEventListener('input', function() {
+                        const value = this.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+                        if (value.length > 8) {
+                            this.value = value.substring(0, 8);
+                            showToast('NCM deve ter no máximo 8 dígitos!', 'warning');
+                        }
+                    });
                 }
-            });
-            
-            // Validação específica para coluna NCM - aceitar apenas números
-            if (column === 'ncm') {
-                textarea.addEventListener('keypress', (e) => {
-                    // Permitir apenas números, backspace, delete, tab, enter, escape
-                    const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
-                    if (!allowedKeys.includes(e.key) && !/^\d$/.test(e.key)) {
-                        e.preventDefault();
-                        showToast('NCM deve conter apenas números!', 'warning');
-                    }
-                });
                 
-                // Limitar a 8 dígitos
-                textarea.addEventListener('input', function() {
-                    const value = this.value.replace(/\D/g, ''); // Remove tudo que não é dígito
-                    if (value.length > 8) {
-                        this.value = value.substring(0, 8);
-                        showToast('NCM deve ter no máximo 8 dígitos!', 'warning');
-                    }
-                });
-            }
-            
-            // Validação específica para coluna Origin - aceitar apenas 1 número
-            if (column === 'origin') {
-                textarea.addEventListener('keypress', (e) => {
-                    // Permitir apenas números, backspace, delete, tab, enter, escape
-                    const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
-                    if (!allowedKeys.includes(e.key) && !/^\d$/.test(e.key)) {
-                        e.preventDefault();
-                        showToast('Origin deve conter apenas 1 número!', 'warning');
-                    }
-                });
+                // Validação específica para coluna Origin - aceitar apenas 1 número
+                if (normalizedColumn === 'origin') {
+                    textarea.addEventListener('keypress', (e) => {
+                        // Permitir apenas números, backspace, delete, tab, enter, escape
+                        const allowedKeys = ['Backspace', 'Delete', 'Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'];
+                        if (!allowedKeys.includes(e.key) && !/^\d$/.test(e.key)) {
+                            e.preventDefault();
+                            showToast('Origin deve conter apenas 1 número!', 'warning');
+                        }
+                    });
+                    
+                    // Limitar a 1 dígito
+                    textarea.addEventListener('input', function() {
+                        const value = this.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+                        if (value.length > 1) {
+                            this.value = value.substring(0, 1);
+                            showToast('Origin deve ter apenas 1 número!', 'warning');
+                        }
+                    });
+                }
                 
-                // Limitar a 1 dígito
-                textarea.addEventListener('input', function() {
-                    const value = this.value.replace(/\D/g, ''); // Remove tudo que não é dígito
-                    if (value.length > 1) {
-                        this.value = value.substring(0, 1);
-                        showToast('Origin deve ter apenas 1 número!', 'warning');
-                    }
-                });
+                // Habilitar copiar e colar
+                enableCopyPaste(textarea);
             }
-            
-            // Habilitar copiar e colar
-            enableCopyPaste(textarea);
         }
         
         // Função para atualizar automaticamente o review_date quando qualquer célula da linha for modificada
@@ -3385,6 +3430,7 @@
                 
                 // Verificar se a célula editada NÃO é a própria review_date para evitar loop
                 const column = cell.getAttribute('data-column');
+                const normalizedColumn = normalizeColumnName(column);
                 if (column === 'review_date') {
                     console.log('Célula editada é review_date, não atualizando automaticamente');
                     return;
@@ -3778,12 +3824,14 @@
                 console.log(`🔍 Célula está em modo de edição:`, cell.classList.contains('editing') ? 'sim' : 'não');
                 
                 if (cell.classList.contains('editing')) {
-                    const textarea = cell.querySelector('.excel-input');
-                    if (textarea) {
-                        textarea.value = lastGlobalEdit.oldValue;
-                        textarea.setAttribute('data-original-value', lastGlobalEdit.oldValue);
-                        textarea.focus();
-                        textarea.select();
+                    const editor = cell.querySelector('.excel-input');
+                    if (editor) {
+                        editor.value = lastGlobalEdit.oldValue;
+                        editor.setAttribute('data-original-value', lastGlobalEdit.oldValue);
+                        editor.focus();
+                        if (typeof editor.select === 'function') {
+                            editor.select();
+                        }
                         console.log(`✅ Valor restaurado no textarea: ${lastGlobalEdit.oldValue}`);
                     }
                 } else {
@@ -4287,6 +4335,7 @@
             try {
                 // Obter informações da célula
                 const column = cell.getAttribute('data-column');
+                const normalizedColumn = normalizeColumnName(column);
                 
                 // Buscar part_number da peça usando a nova função robusta
                 const partNumber = getPecaPartNumberFromRow(cell);
@@ -4297,11 +4346,11 @@
                 
                 // Preparar dados para atualização (apenas o campo modificado)
                 const updateData = {};
-                updateData[column] = newValue;
+                updateData[normalizedColumn] = newValue;
                 
                 console.log('Salvando célula no banco:', { 
                     partNumber, 
-                    column, 
+                    column: normalizedColumn, 
                     newValue, 
                     updateData,
                     cellId,
@@ -4398,7 +4447,8 @@
                 'machine': 'Máquina',
                 'Situation_OSGT': 'Situação OSGT'
             };
-            return fieldNames[column] || column;
+            const normalizedColumn = normalizeColumnName(column);
+            return fieldNames[normalizedColumn] || normalizedColumn;
         }
 
         // Função para limpar histórico de edições

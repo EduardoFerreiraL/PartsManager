@@ -90,6 +90,29 @@ def _column_exists(column_name: str) -> bool:
     ]
     return column_name.lower() in cols
 
+
+def _get_existing_columns() -> List[str]:
+    structure = stats.get_table_structure_impl()
+    return [
+        c for c in (structure.get("colunas_encontradas") or []) if isinstance(c, str)
+    ]
+
+
+def _get_situation_osgt_column() -> str:
+    """
+    Retorna o nome real da coluna de Situação OSGT no ambiente atual.
+    Alguns ambientes usam 'Situation_OSGT' e outros 'situation_osgt'.
+    """
+    existing_columns = _get_existing_columns()
+    has_upper = "Situation_OSGT" in existing_columns
+    has_lower = "situation_osgt" in existing_columns
+    if has_lower:
+        return "situation_osgt"
+    if has_upper:
+        return "Situation_OSGT"
+    # fallback defensivo para ambientes fora do padrão
+    return "situation_osgt"
+
 @router.get("/pecas", summary="Buscar Peças")
 @retry_with_backoff(max_retries=3, base_delay=1)
 def search_pecas(
@@ -175,11 +198,12 @@ def search_pecas(
             query = query.ilike("added_modified", f"%{added_modified}%")
         
         if Situation_OSGT:
+            situation_column = _get_situation_osgt_column()
             # Tratar valores especiais para NULL
             if Situation_OSGT.lower() in ['vazio', 'null', 'none', '']:
-                query = query.is_("Situation_OSGT", "null")
+                query = query.is_(situation_column, "null")
             else:
-                query = query.eq("Situation_OSGT", Situation_OSGT)
+                query = query.eq(situation_column, Situation_OSGT)
         
         # Aplicar ordenação
         if order_direction.lower() == "desc":
@@ -293,11 +317,12 @@ def count_pecas(
             query = query.ilike("added_modified", f"%{added_modified}%")
         
         if Situation_OSGT:
+            situation_column = _get_situation_osgt_column()
             # Tratar valores especiais para NULL
             if Situation_OSGT.lower() in ['vazio', 'null', 'none', '']:
-                query = query.is_("Situation_OSGT", "null")
+                query = query.is_(situation_column, "null")
             else:
-                query = query.eq("Situation_OSGT", Situation_OSGT)
+                query = query.eq(situation_column, Situation_OSGT)
         
         response = query.execute()
         
@@ -481,10 +506,18 @@ def update_peca_by_part_number(part_number: str, peca_data: dict, current_user: 
         except ValueError:
             part_number_int = part_number
         
+        # Normalizar aliases de campos antes da validação usando o nome real da coluna
+        if "Situation_OSGT" in peca_data or "situation_osgt" in peca_data:
+            situation_value = peca_data.get("Situation_OSGT", peca_data.get("situation_osgt"))
+            peca_data.pop("Situation_OSGT", None)
+            peca_data.pop("situation_osgt", None)
+            resolved_column = _get_situation_osgt_column()
+            peca_data[resolved_column] = situation_value
+
         # Validar dados recebidos (campos travados: part_number, date_of_creation, review_date)
         allowed_fields = {
             'chinese_description', 'description', 'ncm', 'origin',
-            'requester', 'machine', 'Situation_OSGT'
+            'requester', 'machine', 'Situation_OSGT', 'situation_osgt'
         }
         
         update_data = {k: v for k, v in peca_data.items() if k in allowed_fields}
@@ -527,7 +560,9 @@ def update_peca_by_part_number(part_number: str, peca_data: dict, current_user: 
             "message": "Peça atualizada com sucesso",
             "peca_atualizada": response.data[0]
         }
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         error_message = str(e)
         print(f"Erro ao atualizar peça: {error_message}")
