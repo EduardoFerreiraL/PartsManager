@@ -7,6 +7,7 @@ import pandas as pd
 import io
 import json
 from pathlib import Path
+from typing import List, Dict
 
 from database.connection import get_supabase_client
 from config.settings import TABLE_NAME
@@ -42,6 +43,7 @@ MAX_PART_NUMBERS = 500
 EXPORT_ALL_DIR = Path(__file__).resolve().parents[1] / "tmp_exports"
 EXPORT_ALL_META_FILE = EXPORT_ALL_DIR / "pecas_latest.json"
 EXPORT_ALL_FILE_BASENAME = "pecas"
+SUPABASE_EXPORT_PAGE_SIZE = 1000
 
 
 def _format_filename_from_date(dt: datetime) -> str:
@@ -89,6 +91,35 @@ def _save_export_all_metadata(file_path: Path, filename: str, generated_at: date
     }
 
 
+def _fetch_all_pecas_for_export(page_size: int = SUPABASE_EXPORT_PAGE_SIZE) -> List[Dict]:
+    """
+    Busca todos os registros da tabela de peças com paginação no Supabase.
+    Evita truncamento em bases com mais de 1000 linhas.
+    """
+    all_rows: List[Dict] = []
+    offset = 0
+
+    while True:
+        response = (
+            supabase.table(TABLE_NAME)
+            .select("*")
+            .order("part_number", desc=False)
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        rows = response.data or []
+        if not rows:
+            break
+
+        all_rows.extend(rows)
+        if len(rows) < page_size:
+            break
+
+        offset += page_size
+
+    return all_rows
+
+
 def _generate_export_all_file() -> dict:
     generated_at = datetime.now()
     filename = _format_filename_from_date(generated_at)
@@ -103,8 +134,7 @@ def _generate_export_all_file() -> dict:
                 except Exception:
                     pass
 
-    response = supabase.table(TABLE_NAME).select("*").order("part_number", desc=False).execute()
-    data = response.data or []
+    data = _fetch_all_pecas_for_export()
     df = pd.DataFrame(data)
 
     if "position" in df.columns:
