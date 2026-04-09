@@ -1,9 +1,13 @@
 """Dependências FastAPI para autenticação e permissões"""
+import time
+
+import httpx
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials, APIKeyHeader
-from database.connection import get_supabase_client
-from config.settings import LOGIN_TABLE_NAME
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+
 from auth.jwt import decode_token
+from config.settings import LOGIN_TABLE_NAME
+from database.connection import get_supabase_client, reset_supabase_client
 
 security = HTTPBearer(auto_error=False)
 
@@ -34,9 +38,28 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
     # Buscar usuário no banco para garantir que ainda existe e obter dados atualizados
-    supabase = get_supabase_client()
-    r = supabase.table(LOGIN_TABLE_NAME).select("id, nome, email, nivelPermissao").eq("id", int(user_id)).execute()
-    if not r.data or len(r.data) == 0:
+    r = None
+    for attempt in range(2):
+        try:
+            supabase = get_supabase_client()
+            r = (
+                supabase.table(LOGIN_TABLE_NAME)
+                .select("id, nome, email, nivelPermissao")
+                .eq("id", int(user_id))
+                .execute()
+            )
+            break
+        except (httpx.RemoteProtocolError, httpx.ConnectError, httpx.ReadTimeout) as e:
+            reset_supabase_client()
+            if attempt == 0:
+                time.sleep(0.25)
+                continue
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Serviço temporariamente indisponível. Tente novamente em instantes.",
+            ) from e
+
+    if r is None or not r.data or len(r.data) == 0:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuário não encontrado",

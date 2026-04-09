@@ -260,6 +260,39 @@
                 document.getElementById('dashboardError').classList.add('hidden');
             }
 
+            /** Lê o corpo da resposta; se não for JSON em erro HTTP, evita SyntaxError do .json() */
+            async function parseApiResponse(res) {
+                const text = await res.text();
+                const trimmed = text.trim();
+                const ct = (res.headers.get('content-type') || '').toLowerCase();
+                const probablyJson =
+                    ct.includes('application/json') ||
+                    trimmed.charAt(0) === '{' ||
+                    trimmed.charAt(0) === '[';
+                let data = null;
+                if (probablyJson && trimmed) {
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        if (!res.ok) {
+                            const snip = trimmed.length > 160 ? trimmed.slice(0, 160) + '…' : trimmed;
+                            throw new Error('Erro HTTP ' + res.status + ': ' + snip);
+                        }
+                        throw new Error('Resposta da API não é JSON válido (HTTP ' + res.status + ').');
+                    }
+                }
+                if (!res.ok) {
+                    const detail = data && (data.detail || data.message);
+                    const snip = trimmed.length > 180 ? trimmed.slice(0, 180) + '…' : trimmed;
+                    const msg = detail || (snip ? 'Erro HTTP ' + res.status + ': ' + snip : 'Erro HTTP ' + res.status);
+                    throw new Error(typeof msg === 'string' ? msg : 'Erro HTTP ' + res.status);
+                }
+                if (data === null) {
+                    throw new Error('Resposta vazia ou não JSON da API (HTTP ' + res.status + ').');
+                }
+                return data;
+            }
+
             function formatLabel(val) {
                 if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
                     const d = new Date(val + 'T12:00:00');
@@ -428,8 +461,8 @@
                         fetch(API_BASE + '/dashboard/cadastrados?' + params.toString()),
                         fetch(API_BASE + '/dashboard/modificados?' + params.toString())
                     ]);
-                    const dataCad = await resCad.json();
-                    const dataMod = await resMod.json();
+                    const dataCad = await parseApiResponse(resCad);
+                    const dataMod = await parseApiResponse(resMod);
                     if (dataCad.status !== 'success') throw new Error(dataCad.detail || dataCad.message || 'Erro cadastrados');
                     if (dataMod.status !== 'success') throw new Error(dataMod.detail || dataMod.message || 'Erro modificados');
 
@@ -451,8 +484,8 @@
                         fetch(API_BASE + '/dashboard/origin?' + qs.toString()),
                         fetch(API_BASE + '/dashboard/situation-osgt?' + qs.toString())
                     ]);
-                    const dataOrigin = await resOrigin.json();
-                    const dataSit = await resSit.json();
+                    const dataOrigin = await parseApiResponse(resOrigin);
+                    const dataSit = await parseApiResponse(resSit);
                     if (dataOrigin.status !== 'success') throw new Error(dataOrigin.detail || 'Erro origin');
                     if (dataSit.status !== 'success') throw new Error(dataSit.detail || 'Erro situation');
 
