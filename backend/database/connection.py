@@ -1,12 +1,18 @@
 """Conexões com banco de dados"""
+import ssl
 from typing import Optional
 
 import httpx
+import truststore
 from httpx import HTTPTransport, Limits, Timeout
 from supabase import create_client, Client
 from supabase.lib.client_options import SyncClientOptions
 
 from config.settings import SUPABASE_URL, SUPABASE_KEY, DIRECT_URL
+
+# Usa o repositório de certificados do Windows. Nesta rede o firewall Fortinet
+# faz inspeção SSL e o pacote certifi (CA públicos) não inclui a CA corporativa.
+truststore.inject_into_ssl()
 
 _supabase_client: Optional[Client] = None
 _httpx_client: Optional[httpx.Client] = None
@@ -14,7 +20,9 @@ _httpx_client: Optional[httpx.Client] = None
 
 def _build_httpx_client() -> httpx.Client:
     """Cliente HTTP estável para PostgREST: HTTP/1.1, retries e poucos keep-alive (evita RemoteProtocolError em HTTP/2)."""
+    ssl_context = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     transport = HTTPTransport(
+        verify=ssl_context,
         http1=True,
         http2=False,
         retries=3,
@@ -24,7 +32,7 @@ def _build_httpx_client() -> httpx.Client:
             keepalive_expiry=30.0,
         ),
     )
-    return httpx.Client(transport=transport, timeout=Timeout(120.0))
+    return httpx.Client(transport=transport, timeout=Timeout(120.0), verify=ssl_context)
 
 
 def get_supabase_client() -> Client:
