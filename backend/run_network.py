@@ -10,11 +10,33 @@ Ou:
     python run_network.py --host 0.0.0.0 --port 8000
 """
 
+import sys
+import subprocess
+from pathlib import Path
+
+# Se for executado com Python global sem o venv ativado, redireciona automaticamente para o venv do projeto
+if sys.prefix == sys.base_prefix:
+    root_dir = Path(__file__).resolve().parent.parent
+    backend_dir = Path(__file__).resolve().parent
+    candidates = [
+        root_dir / "venv" / "Scripts" / "python.exe",
+        backend_dir / "venv" / "Scripts" / "python.exe",
+        root_dir / ".venv" / "Scripts" / "python.exe",
+        backend_dir / ".venv" / "Scripts" / "python.exe",
+    ]
+    for venv_py in candidates:
+        if venv_py.exists():
+            print(f"[*] Redirecionando para o ambiente virtual: {venv_py}")
+            try:
+                result = subprocess.run([str(venv_py)] + sys.argv)
+                sys.exit(result.returncode)
+            except KeyboardInterrupt:
+                sys.exit(0)
+
 import uvicorn
 import argparse
 import socket
 import os
-from pathlib import Path
 
 def get_local_ip():
     """Obtém o IP local da máquina"""

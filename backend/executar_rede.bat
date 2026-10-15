@@ -27,9 +27,12 @@ echo ✅ Arquivo .env encontrado
 echo.
 
 echo 🔧 Ativando ambiente virtual...
-if exist "venv\Scripts\activate.bat" (
+if exist "..\venv\Scripts\activate.bat" (
+    call ..\venv\Scripts\activate.bat
+    echo ✅ Ambiente virtual ativado (..\venv)
+) else if exist "venv\Scripts\activate.bat" (
     call venv\Scripts\activate.bat
-    echo ✅ Ambiente virtual ativado
+    echo ✅ Ambiente virtual ativado (venv)
 ) else (
     echo ⚠️  Ambiente virtual não encontrado
     echo    Instalando dependências globalmente...

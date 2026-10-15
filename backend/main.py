@@ -14,11 +14,33 @@
 # 3. No terminal, rode a aplicação:
 #    uvicorn main:app --reload
 
+import os
+import sys
+import subprocess
+from pathlib import Path
+
+# Se for executado diretamente com Python global sem o venv ativado, redireciona para o venv
+if __name__ == "__main__" and sys.prefix == sys.base_prefix:
+    root_dir = Path(__file__).resolve().parent.parent
+    backend_dir = Path(__file__).resolve().parent
+    candidates = [
+        root_dir / "venv" / "Scripts" / "python.exe",
+        backend_dir / "venv" / "Scripts" / "python.exe",
+        root_dir / ".venv" / "Scripts" / "python.exe",
+        backend_dir / ".venv" / "Scripts" / "python.exe",
+    ]
+    for venv_py in candidates:
+        if venv_py.exists():
+            print(f"[*] Redirecionando para o ambiente virtual: {venv_py}")
+            try:
+                result = subprocess.run([str(venv_py)] + sys.argv)
+                sys.exit(result.returncode)
+            except KeyboardInterrupt:
+                sys.exit(0)
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-import os
-import sys
 from utils.network import get_local_ip
 from routes import api_router
 
@@ -84,6 +106,12 @@ async def startup_event():
 
 if __name__ == "__main__":
     import uvicorn
+    reload = "--reload" in sys.argv
     port = 8000
+    if "--port" in sys.argv:
+        try:
+            port = int(sys.argv[sys.argv.index("--port") + 1])
+        except (ValueError, IndexError):
+            pass
     os.environ['UVICORN_PORT'] = str(port)
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run("main:app", host="0.0.0.0", port=port, reload=reload)
