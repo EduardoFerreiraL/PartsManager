@@ -4,26 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciador de Peças - Menu Principal</title>
+    <meta name="description" content="Sistema completo para gerenciamento de peças - Painel de controle principal">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
                 extend: {
-                    colors: {
-                        primary: {
-                            50: '#eff6ff',
-                            500: '#3b82f6',
-                            600: '#2563eb',
-                            700: '#1d4ed8'
-                        },
-                        secondary: {
-                            50: '#f8fafc',
-                            100: '#f1f5f9',
-                            500: '#64748b',
-                            600: '#475569'
-                        }
-                    }
+                    fontFamily: { inter: ['Inter', 'sans-serif'] }
                 }
             }
         }
@@ -31,355 +20,804 @@
     <script src="config.js"></script>
     <script src="auth.js"></script>
     <script src="user-menu.js"></script>
+
+    <style>
+        /* ===== BASE & RESET ===== */
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #070b18;
+            color: #e2e8f0;
+            margin: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* ===== CUSTOM SCROLLBAR ===== */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0c1222; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+        /* ===== TOP NAVBAR ===== */
+        .top-navbar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            height: 56px;
+            background: #0c1222;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+        .top-navbar .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 200px;
+            flex-shrink: 0;
+        }
+        .top-navbar .logo-icon {
+            width: 34px; height: 34px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #fff;
+        }
+        .top-navbar .logo-text {
+            font-weight: 700;
+            font-size: 15px;
+            color: #fff;
+            white-space: nowrap;
+        }
+
+        /* Top nav links */
+        .top-nav-links {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            flex: 1;
+            justify-content: center;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+        .top-nav-links::-webkit-scrollbar { display: none; }
+        .top-nav-link {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #94a3b8;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .top-nav-link i { font-size: 12px; }
+        .top-nav-link:hover { color: #e2e8f0; background: rgba(255,255,255,0.05); }
+        .top-nav-link.active {
+            color: #fff;
+            background: rgba(59, 130, 246, 0.15);
+        }
+        .top-nav-link.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 2px;
+            background: #3b82f6;
+            border-radius: 2px;
+        }
+        .top-nav-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: auto;
+            flex-shrink: 0;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            position: fixed;
+            top: 56px;
+            left: 0;
+            bottom: 0;
+            width: 210px;
+            background: #0c1222;
+            border-right: 1px solid rgba(255,255,255,0.06);
+            padding: 16px 12px;
+            z-index: 90;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+        }
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 13.5px;
+            font-weight: 500;
+            color: #94a3b8;
+            text-decoration: none;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .sidebar-link i {
+            width: 18px;
+            text-align: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .sidebar-link:hover {
+            color: #e2e8f0;
+            background: rgba(255,255,255,0.05);
+        }
+        .sidebar-link.active {
+            color: #fff;
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+            font-weight: 600;
+        }
+        .sidebar-link.active i { color: #fff; }
+
+        /* Sidebar overlay for mobile */
+        .sidebar-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 85;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .sidebar-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            margin-left: 210px;
+            margin-top: 56px;
+            padding: 24px;
+            min-height: calc(100vh - 56px);
+        }
+
+        /* ===== HERO BANNER ===== */
+        .hero-banner {
+            background: linear-gradient(135deg, #0f1729 0%, #111d35 50%, #16213e 100%);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 36px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-banner::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: url('imagens/fundoDb.jpg') center/cover no-repeat;
+            opacity: 0.08;
+            z-index: 0;
+        }
+        .hero-text { position: relative; z-index: 1; flex: 1; }
+        .hero-subtitle {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: #64748b;
+            margin-bottom: 10px;
+        }
+        .hero-title {
+            font-size: 32px;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1.2;
+            margin-bottom: 14px;
+        }
+        .hero-description {
+            font-size: 14px;
+            color: #94a3b8;
+            line-height: 1.6;
+            max-width: 500px;
+        }
+        .hero-image {
+            position: relative;
+            z-index: 1;
+            width: 230px;
+            height: 230px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .hero-image::before {
+            content: '';
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.18) 0%, rgba(139, 92, 246, 0.12) 40%, transparent 70%);
+            border-radius: 50%;
+            z-index: 0;
+            pointer-events: none;
+            filter: blur(8px);
+        }
+        .hero-image img {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: drop-shadow(0 0 30px rgba(59, 130, 246, 0.4)) drop-shadow(0 0 50px rgba(139, 92, 246, 0.25));
+            animation: float 6s ease-in-out infinite;
+            user-select: none;
+            pointer-events: none;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+        }
+
+        /* ===== ACTION CARDS ===== */
+        .action-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+        .action-card {
+            background: #111a2e;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 14px;
+            padding: 24px 22px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .action-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            border-radius: 14px 14px 0 0;
+        }
+        .action-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+        }
+        .action-card .card-watermark {
+            position: absolute;
+            bottom: -10px;
+            right: -10px;
+            font-size: 80px;
+            opacity: 0.03;
+            color: #fff;
+            pointer-events: none;
+        }
+
+        /* Card color themes */
+        .action-card.green::before { background: linear-gradient(90deg, #10b981, #059669); }
+        .action-card.green:hover { border-color: rgba(16, 185, 129, 0.3); box-shadow: 0 12px 40px rgba(16, 185, 129, 0.1); }
+        .action-card.blue::before { background: linear-gradient(90deg, #3b82f6, #2563eb); }
+        .action-card.blue:hover { border-color: rgba(59, 130, 246, 0.3); box-shadow: 0 12px 40px rgba(59, 130, 246, 0.1); }
+        .action-card.orange::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
+        .action-card.orange:hover { border-color: rgba(245, 158, 11, 0.3); box-shadow: 0 12px 40px rgba(245, 158, 11, 0.1); }
+        .action-card.purple::before { background: linear-gradient(90deg, #8b5cf6, #7c3aed); }
+        .action-card.purple:hover { border-color: rgba(139, 92, 246, 0.3); box-shadow: 0 12px 40px rgba(139, 92, 246, 0.1); }
+
+        .card-icon {
+            width: 48px; height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: #fff;
+            margin-bottom: 16px;
+            flex-shrink: 0;
+        }
+        .card-icon.green-icon { background: linear-gradient(135deg, #10b981, #059669); box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); }
+        .card-icon.blue-icon { background: linear-gradient(135deg, #3b82f6, #2563eb); box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3); }
+        .card-icon.orange-icon { background: linear-gradient(135deg, #f59e0b, #d97706); box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3); }
+        .card-icon.purple-icon { background: linear-gradient(135deg, #8b5cf6, #7c3aed); box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3); }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        .card-desc {
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.5;
+            flex: 1;
+            margin-bottom: 16px;
+        }
+        .card-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            width: fit-content;
+        }
+        .card-btn:hover { filter: brightness(1.15); transform: translateX(2px); }
+        .card-btn.green-btn { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
+        .card-btn.blue-btn { background: linear-gradient(135deg, #3b82f6, #2563eb); color: #fff; }
+        .card-btn.orange-btn { background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; }
+        .card-btn.purple-btn { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: #fff; }
+
+        /* ===== STATISTICS SECTION ===== */
+        .stats-section {
+            background: #111a2e;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 14px;
+            padding: 24px;
+        }
+        .stats-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .stats-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+        .stats-title i { color: #3b82f6; font-size: 18px; }
+        .stats-timestamp {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: #64748b;
+        }
+        .stats-timestamp i { font-size: 11px; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+        }
+        .stat-card {
+            background: #0c1222;
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: all 0.2s ease;
+        }
+        .stat-card:hover { border-color: rgba(255,255,255,0.08); }
+        .stat-icon {
+            width: 44px; height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #fff;
+            flex-shrink: 0;
+        }
+        .stat-icon.blue-stat { background: linear-gradient(135deg, #1e40af, #3b82f6); }
+        .stat-icon.green-stat { background: linear-gradient(135deg, #047857, #10b981); }
+        .stat-icon.purple-stat { background: linear-gradient(135deg, #5b21b6, #8b5cf6); }
+
+        .stat-info { flex: 1; }
+        .stat-label {
+            font-size: 12px;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+        .stat-value {
+            font-size: 22px;
+            font-weight: 700;
+            color: #fff;
+        }
+        .stat-indicator {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .stat-indicator.green { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+        .stat-indicator.blue { background: #3b82f6; box-shadow: 0 0 8px rgba(59, 130, 246, 0.5); }
+        .stat-arrow {
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            background: rgba(255,255,255,0.04);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        /* ===== API STATUS BLOCK (admin only) ===== */
+        .api-status-block {
+            background: #111a2e;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 14px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .api-status-block .status-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #e2e8f0;
+        }
+        .api-status-block .status-label i { color: #3b82f6; }
+        .check-status-btn {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #94a3b8;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Inter', sans-serif;
+        }
+        .check-status-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: #e2e8f0;
+        }
+
+        /* ===== EXPORT CARD BUTTONS ===== */
+        .export-btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+        .export-btn-group button {
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+        .export-btn-group button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-export-download {
+            background: rgba(139, 92, 246, 0.15);
+            color: #a78bfa;
+            border: 1px solid rgba(139, 92, 246, 0.2) !important;
+        }
+        .btn-export-download:hover:not(:disabled) {
+            background: rgba(139, 92, 246, 0.25);
+        }
+        .btn-export-generate {
+            background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+            color: #fff;
+        }
+        .btn-export-generate:hover:not(:disabled) {
+            filter: brightness(1.15);
+        }
+
+        /* ===== MOBILE HAMBURGER ===== */
+        .mobile-toggle {
+            display: none;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+        .mobile-toggle:hover { color: #fff; background: rgba(255,255,255,0.05); }
+
+        /* ===== USER PANEL DARK OVERRIDES ===== */
+        #user-panel {
+            background: rgba(12, 18, 34, 0.97) !important;
+            border-right: 1px solid rgba(255,255,255,0.06) !important;
+        }
+        #user-panel * { color: #e2e8f0 !important; }
+        #user-panel .border-b { border-color: rgba(255,255,255,0.06) !important; }
+        #user-panel button[id="user-panel-close"] { color: #64748b !important; }
+        #user-panel button[id="user-panel-close"]:hover { color: #e2e8f0 !important; background: rgba(255,255,255,0.05) !important; }
+        #user-panel #user-panel-nivel { background: rgba(59, 130, 246, 0.15) !important; color: #60a5fa !important; }
+        #user-panel #user-panel-logout {
+            background: rgba(239, 68, 68, 0.1) !important;
+            color: #ef4444 !important;
+        }
+        #user-panel #user-panel-logout:hover {
+            background: rgba(239, 68, 68, 0.2) !important;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 1024px) {
+            .action-cards-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+        @media (max-width: 768px) {
+            .top-nav-links { display: none; }
+            .mobile-toggle { display: block; }
+            .sidebar {
+                transform: translateX(-100%);
+                z-index: 95;
+                width: 260px;
+            }
+            .sidebar.open { transform: translateX(0); }
+            .main-content { margin-left: 0; }
+            .action-cards-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .hero-banner {
+                flex-direction: column;
+                text-align: center;
+                padding: 24px 20px;
+            }
+            .hero-image { width: 140px; height: 140px; margin-top: 20px; }
+            .hero-title { font-size: 24px; }
+            .hero-description { max-width: none; }
+        }
+        @media (max-width: 480px) {
+            .main-content { padding: 16px; }
+            .top-navbar .logo-text { display: none; }
+        }
+    </style>
 </head>
-<body class="min-h-screen text-gray-800 relative">
-    <!-- Imagem de fundo com filtro escuro -->
-    <div class="fixed inset-0 z-0">
-        <img src="imagens/fundoDb.jpg" alt="Fundo do banco de dados" class="w-full h-full object-cover" 
-             onerror="this.style.display='none'; this.nextElementSibling.style.background='linear-gradient(135deg, #1e3a8a, #3730a3, #581c87)'">
-        <div class="absolute inset-0 bg-black bg-opacity-60"></div>
-    </div>
-    
-    <!-- BARRA DE NAVEGAÇÃO -->
-    <nav class="bg-white/10 backdrop-blur-md border-b border-white/20 sticky top-0 z-50">
-        <div class="container mx-auto px-4">
-            <div class="flex items-center justify-between h-16">
-                <!-- Logo/Título do Sistema -->
-                <div class="flex items-center space-x-4">
-                    <!-- Ícone do sistema -->
-                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                        <i class="fas fa-cogs text-white text-lg"></i>
-                    </div>
-                    <!-- Nome do sistema -->
-                    <h1 class="text-xl font-bold text-white hidden sm:block">
-                        Gerenciador de Peças
-                    </h1>
-                </div>
 
-                <!-- Menu de Navegação Principal -->
-                <div class="hidden md:flex items-center space-x-1">
-                    <!-- Menu (data-permission-min: visível se nivelPermissao <= valor) -->
-                    <a href="/" data-permission-min="3" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20 active current-page">
-                        <i class="fas fa-home text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
-                        <span class="font-medium text-white">Menu Principal</span>
-                    </a>
-                    <a href="/adicionar" data-permission-min="2" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
-                        <i class="fas fa-plus text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
-                        <span class="font-medium text-white">Adicionar Itens</span>
-                    </a>
-                    <a href="/visualizar" data-permission-min="3" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
-                        <i class="fas fa-search text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
-                        <span class="font-medium text-white">Visualizar Itens</span>
-                    </a>
-                    <a href="/atualizacao-em-massa" data-permission-min="2" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
-                        <i class="fas fa-file-excel text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
-                        <span class="font-medium text-white">Atualização em massa</span>
-                    </a>
-                    <a href="/dashboard" data-permission-min="1" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
-                        <i class="fas fa-chart-line text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
-                        <span class="font-medium text-white">Dashboard</span>
-                    </a>
-                    <a href="/aprovar-usuarios" data-permission-min="1" class="nav-link group flex items-center px-4 py-2 rounded-lg transition-all duration-300 hover:bg-white/20">
-                        <i class="fas fa-user-check text-white text-lg mr-2 group-hover:scale-110 transition-transform"></i>
-                        <span class="font-medium text-white">Gerenciar usuários</span>
-                    </a>
-                </div>
+<body>
+    <!-- ======== TOP NAVBAR ======== -->
+    <nav class="top-navbar">
+        <!-- Logo -->
+        <div class="logo">
+            <div class="logo-icon"><i class="fas fa-cogs"></i></div>
+            <span class="logo-text">Gerenciador de Peças</span>
+        </div>
 
-                <div id="user-menu-root" class="flex items-center ml-4"></div>
+        <!-- Navigation Links (desktop) -->
+        <div class="top-nav-links">
+            <a href="/" data-permission-min="3" class="top-nav-link active" data-key="home">
+                <i class="fas fa-home"></i> Menu Principal
+            </a>
+            <a href="/adicionar" data-permission-min="2" class="top-nav-link" data-key="adicionar">
+                <i class="fas fa-plus"></i> Adicionar Itens
+            </a>
+            <a href="/visualizar" data-permission-min="3" class="top-nav-link" data-key="visualizar">
+                <i class="fas fa-search"></i> Visualizar Itens
+            </a>
+            <a href="/atualizacao-em-massa" data-permission-min="2" class="top-nav-link" data-key="atualizacao-em-massa">
+                <i class="fas fa-file-excel"></i> Atualização em massa
+            </a>
+            <a href="/dashboard" data-permission-min="1" class="top-nav-link" data-key="dashboard">
+                <i class="fas fa-chart-line"></i> Dashboard
+            </a>
+            <a href="/aprovar-usuarios" data-permission-min="1" class="top-nav-link" data-key="aprovar-usuarios">
+                <i class="fas fa-user-check"></i> Gerenciar usuários
+            </a>
+        </div>
 
-                <!-- Menu Mobile (Hamburger) -->
-                <div class="md:hidden">
-                    <button id="mobileMenuBtn" 
-                            class="text-white hover:text-gray-200 transition-colors p-2">
-                        <i class="fas fa-bars text-xl"></i>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Menu Mobile Expandido -->
-            <div id="mobileMenu" class="md:hidden hidden border-t border-white/20 pt-4 pb-4">
-                <div class="flex flex-col space-y-2">
-                    <a href="/" data-permission-min="3" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20 active current-page">
-                        <i class="fas fa-home text-white text-lg mr-3"></i>
-                        <span class="font-medium text-white">Menu Principal</span>
-                    </a>
-                    <a href="/adicionar" data-permission-min="2" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
-                        <i class="fas fa-plus text-white text-lg mr-3"></i>
-                        <span class="font-medium text-white">Adicionar Itens</span>
-                    </a>
-                    <a href="/visualizar" data-permission-min="3" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
-                        <i class="fas fa-search text-white text-lg mr-3"></i>
-                        <span class="font-medium text-white">Visualizar Itens</span>
-                    </a>
-                    <a href="/atualizacao-em-massa" data-permission-min="2" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
-                        <i class="fas fa-file-excel text-white text-lg mr-3"></i>
-                        <span class="font-medium text-white">Atualização em massa</span>
-                    </a>
-                    <a href="/dashboard" data-permission-min="1" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
-                        <i class="fas fa-chart-line text-white text-lg mr-3"></i>
-                        <span class="font-medium text-white">Dashboard</span>
-                    </a>
-                    <a href="/aprovar-usuarios" data-permission-min="1" class="mobile-nav-link flex items-center px-4 py-3 rounded-lg transition-all duration-300 hover:bg-white/20">
-                        <i class="fas fa-user-check text-white text-lg mr-3"></i>
-                        <span class="font-medium text-white">Gerenciar usuários</span>
-                    </a>
-                </div>
-            </div>
+        <!-- Right side: User menu + Mobile toggle -->
+        <div class="top-nav-right">
+            <div id="user-menu-root"></div>
+            <button id="mobileMenuBtn" class="mobile-toggle" aria-label="Abrir menu lateral">
+                <i class="fas fa-bars"></i>
+            </button>
         </div>
     </nav>
-    
-    <!-- Conteúdo principal com z-index para ficar sobre o fundo -->
-    <div class="relative z-10">
-    <div class="container mx-auto px-4 py-8 max-w-7xl">
-        <!-- Header -->
-        <header class="text-center mb-12">
-            <h1 class="text-4xl md:text-5xl font-bold text-white mb-6 drop-shadow-lg">
-                <i class="fas fa-tachometer-alt mr-4"></i>Painel de Controle
-            </h1>
-            <p class="text-2xl text-blue-100 opacity-90">Sistema completo para gerenciamento de peças</p>
-        </header>
 
-        <!-- Status da API -->
-        <div class="bg-white rounded-2xl p-6 mb-8 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-3">
-                    <i class="fas fa-server text-primary-500"></i>Status do Sistema
-                </h3>
-                <button id="checkStatusBtn" class="bg-gray-100 text-gray-700 px-6 py-3 rounded-lg font-medium border border-gray-300 transition-all duration-300 hover:bg-gray-200 hover:shadow-md hover:-translate-y-0.5 inline-flex items-center gap-2 mt-4 md:mt-0">
-                    <i class="fas fa-sync-alt"></i>Verificar
-                </button>
+    <!-- ======== SIDEBAR ======== -->
+    <aside id="sidebar" class="sidebar">
+        <a href="/" data-permission-min="3" class="sidebar-link active" data-key="home">
+            <i class="fas fa-home"></i> Início
+        </a>
+        <a href="/adicionar" data-permission-min="2" class="sidebar-link" data-key="adicionar">
+            <i class="fas fa-plus"></i> Adicionar Itens
+        </a>
+        <a href="/visualizar" data-permission-min="3" class="sidebar-link" data-key="visualizar">
+            <i class="fas fa-search"></i> Visualizar Itens
+        </a>
+        <a href="/atualizacao-em-massa" data-permission-min="2" class="sidebar-link" data-key="atualizacao-em-massa">
+            <i class="fas fa-file-excel"></i> Atualização em massa
+        </a>
+        <a href="/dashboard" data-permission-min="1" class="sidebar-link" data-key="dashboard">
+            <i class="fas fa-chart-line"></i> Dashboard
+        </a>
+        <a href="/aprovar-usuarios" data-permission-min="1" class="sidebar-link" data-key="aprovar-usuarios">
+            <i class="fas fa-user-check"></i> Gerenciar usuários
+        </a>
+    </aside>
+
+    <!-- Sidebar overlay (mobile) -->
+    <div id="sidebarOverlay" class="sidebar-overlay"></div>
+
+    <!-- ======== MAIN CONTENT ======== -->
+    <main class="main-content">
+
+        <!-- Hero Welcome Banner -->
+        <section class="hero-banner">
+            <div class="hero-text">
+                <p class="hero-subtitle">Sistema completo para gerenciamento de peças</p>
+                <h1 class="hero-title">Bem-vindo ao<br>Gerenciador de Peças</h1>
+                <p class="hero-description">
+                    Gerencie seu estoque, cadastre peças, atualize em massa e mantenha tudo organizado em um só lugar.
+                </p>
             </div>
-            <div id="apiStatus" class="flex items-center gap-4 text-lg">
-                <span class="w-3 h-3 rounded-full inline-block bg-red-500 shadow-lg shadow-red-500/50"></span>
-                <span>Verificando status do sistema...</span>
-            </div>
-        </div>
-
-        <!-- Menu Principal: atalhos em grade 2×2 (telas médias) ou 1×4 (telas largas) -->
-        <section class="mb-10" aria-label="Atalhos do menu principal">
-            <h2 class="text-lg font-semibold text-white/90 mb-4 text-center md:text-left tracking-wide">
-                <i class="fas fa-bolt text-amber-300 mr-2" aria-hidden="true"></i>Ações rápidas
-            </h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 lg:gap-6 xl:gap-5 items-stretch">
-                <!-- 1: Adicionar -->
-                <div class="bg-white rounded-2xl p-6 sm:p-7 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group h-full flex flex-col" data-permission-min="2" onclick="window.location.href='/adicionar'">
-                    <div class="text-center flex flex-col flex-1 min-h-0">
-                        <div class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-green-400 to-green-600 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-105 transition-transform duration-300 shadow-lg shadow-green-500/25">
-                            <i class="fas fa-plus text-white text-2xl sm:text-3xl"></i>
-                        </div>
-                        <h3 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">Adicionar Itens</h3>
-                        <p class="text-gray-600 text-sm sm:text-base leading-relaxed flex-1">Envie planilhas Excel para incluir novas peças no sistema.</p>
-                        <div class="mt-5 pt-2 border-t border-gray-100">
-                            <span class="inline-flex items-center justify-center w-full bg-green-50 text-green-700 px-4 py-2.5 rounded-xl font-medium text-sm sm:text-base">
-                                <i class="fas fa-arrow-right mr-2"></i>Acessar
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 2: Visualizar -->
-                <div class="bg-white rounded-2xl p-6 sm:p-7 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group h-full flex flex-col" onclick="window.location.href='/visualizar'">
-                    <div class="text-center flex flex-col flex-1 min-h-0">
-                        <div class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-105 transition-transform duration-300 shadow-lg shadow-blue-500/25">
-                            <i class="fas fa-search text-white text-2xl sm:text-3xl"></i>
-                        </div>
-                        <h3 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">Visualizar Itens</h3>
-                        <p class="text-gray-600 text-sm sm:text-base leading-relaxed flex-1">Pesquise, filtre e consulte todas as peças cadastradas.</p>
-                        <div class="mt-5 pt-2 border-t border-gray-100">
-                            <span class="inline-flex items-center justify-center w-full bg-blue-50 text-blue-700 px-4 py-2.5 rounded-xl font-medium text-sm sm:text-base">
-                                <i class="fas fa-arrow-right mr-2"></i>Acessar
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 3: Atualização em massa -->
-                <div class="bg-white rounded-2xl p-6 sm:p-7 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer group h-full flex flex-col" data-permission-min="2" onclick="window.location.href='/atualizacao-em-massa'">
-                    <div class="text-center flex flex-col flex-1 min-h-0">
-                        <div class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-amber-400 to-amber-600 rounded-2xl flex items-center justify-center mx-auto mb-5 group-hover:scale-105 transition-transform duration-300 shadow-lg shadow-amber-500/25">
-                            <i class="fas fa-file-excel text-white text-2xl sm:text-3xl"></i>
-                        </div>
-                        <h3 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">Atualização em massa</h3>
-                        <p class="text-gray-600 text-sm sm:text-base leading-relaxed flex-1">Gere planilha por PNs, edite e envie para atualizar várias peças de uma vez.</p>
-                        <div class="mt-5 pt-2 border-t border-gray-100">
-                            <span class="inline-flex items-center justify-center w-full bg-amber-50 text-amber-700 px-4 py-2.5 rounded-xl font-medium text-sm sm:text-base">
-                                <i class="fas fa-arrow-right mr-2"></i>Acessar
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- 4: Exportar base completa -->
-                <div class="bg-white rounded-2xl p-6 sm:p-7 shadow-xl transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 h-full flex flex-col ring-1 ring-indigo-100/80">
-                    <div class="text-center flex flex-col flex-1 min-h-0">
-                        <div class="w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-indigo-400 to-indigo-700 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-indigo-500/25">
-                            <i class="fas fa-file-download text-white text-2xl sm:text-3xl"></i>
-                        </div>
-                        <h3 class="text-xl sm:text-2xl font-bold text-gray-800 mb-3">Exportar base completa</h3>
-                        <p class="text-gray-600 text-sm sm:text-base leading-relaxed">Baixe a última planilha ou gere uma nova com todos os itens.</p>
-                        <p id="exportLastGeneratedInfo" class="text-xs sm:text-sm text-gray-500 mt-2 mb-4 min-h-[2.5rem] flex items-center justify-center">Carregando status da última geração...</p>
-                        <div class="mt-auto flex flex-col gap-2.5 w-full max-w-xs mx-auto">
-                            <button type="button" id="downloadLastExportBtn" class="bg-indigo-50 text-indigo-700 px-4 py-2.5 rounded-xl font-medium text-sm hover:bg-indigo-100 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed">
-                                <i class="fas fa-download mr-2"></i>Baixar última planilha
-                            </button>
-                            <button type="button" id="generateNewExportBtn" class="bg-indigo-600 text-white px-4 py-2.5 rounded-xl font-medium text-sm hover:bg-indigo-700 transition-all duration-300">
-                                <i class="fas fa-cog mr-2"></i>Gerar nova planilha
-                            </button>
-                        </div>
-                    </div>
-                </div>
+            <div class="hero-image">
+                <img src="imagens/hero-gear.png" alt="Engrenagem decorativa"
+                     onerror="this.style.display='none'">
             </div>
         </section>
 
-        <!-- Estatísticas Rápidas -->
-        <div class="bg-white rounded-2xl p-6 shadow-xl">
-            <h3 class="text-xl font-semibold text-gray-800 flex items-center gap-3 mb-6">
-                <i class="fas fa-chart-bar text-primary-500"></i>Estatísticas do Sistema
-            </h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="bg-gradient-to-r from-blue-50 to-blue-100 rounded-xl p-6 border-l-4 border-blue-500">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-blue-600">Total de Peças</p>
-                            <p id="totalPecas" class="text-3xl font-bold text-blue-800">-</p>
-                        </div>
-                        <i class="fas fa-cogs text-blue-500 text-2xl"></i>
-                    </div>
+        <!-- API Status (admin only) -->
+        <div id="apiStatusBlock" class="api-status-block" style="display:none;">
+            <div>
+                <div class="status-label">
+                    <i class="fas fa-server"></i> Status do Sistema
                 </div>
-                <div class="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-6 border-l-4 border-green-500">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-green-600">Sistema</p>
-                            <p id="sistemaStatus" class="text-3xl font-bold text-green-800">-</p>
-                        </div>
-                        <i class="fas fa-server text-green-500 text-2xl"></i>
-                    </div>
-                </div>
-                <div class="bg-gradient-to-r from-purple-50 to-purple-100 rounded-xl p-6 border-l-4 border-purple-500">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-sm font-medium text-purple-600">Banco de Dados</p>
-                            <p id="bancoStatus" class="text-3xl font-bold text-purple-800">-</p>
-                        </div>
-                        <i class="fas fa-database text-purple-500 text-2xl"></i>
-                    </div>
+                <div id="apiStatus" style="margin-top:8px; display:flex; align-items:center; gap:10px; font-size:14px;">
+                    <span style="width:10px; height:10px; border-radius:50%; background:#ef4444; box-shadow:0 0 8px rgba(239,68,68,0.5); display:inline-block;"></span>
+                    <span style="color:#94a3b8;">Verificando status do sistema...</span>
                 </div>
             </div>
+            <button id="checkStatusBtn" class="check-status-btn">
+                <i class="fas fa-sync-alt"></i> Verificar
+            </button>
         </div>
-    </div>
-    </div> <!-- Fechamento da div do conteúdo principal -->
 
-    <!-- Estilos CSS para navegação -->
-    <style>
-        /* Estilo para links ativos na navegação */
-        .nav-link.active, .mobile-nav-link.active {
-            background-color: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
+        <!-- Action Cards Grid -->
+        <section class="action-cards-grid" aria-label="Ações rápidas">
 
-        /* Animação suave para o menu mobile */
-        .mobile-menu-enter {
-            animation: slideDown 0.3s ease-out;
-        }
+            <!-- Card 1: Adicionar Itens -->
+            <div class="action-card green" data-permission-min="2" onclick="window.location.href='/adicionar'">
+                <div class="card-icon green-icon"><i class="fas fa-plus"></i></div>
+                <h3 class="card-title">Adicionar Itens</h3>
+                <p class="card-desc">Envie planilhas Excel para incluir novas peças no sistema.</p>
+                <span class="card-btn green-btn"><i class="fas fa-arrow-right"></i> Acessar</span>
+                <i class="fas fa-plus card-watermark"></i>
+            </div>
 
-        .mobile-menu-exit {
-            animation: slideUp 0.3s ease-in;
-        }
+            <!-- Card 2: Visualizar Itens -->
+            <div class="action-card blue" onclick="window.location.href='/visualizar'">
+                <div class="card-icon blue-icon"><i class="fas fa-search"></i></div>
+                <h3 class="card-title">Visualizar Itens</h3>
+                <p class="card-desc">Pesquise, filtre e consulte todas as peças cadastradas.</p>
+                <span class="card-btn blue-btn"><i class="fas fa-arrow-right"></i> Acessar</span>
+                <i class="fas fa-search card-watermark"></i>
+            </div>
 
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
+            <!-- Card 3: Atualização em massa -->
+            <div class="action-card orange" data-permission-min="2" onclick="window.location.href='/atualizacao-em-massa'">
+                <div class="card-icon orange-icon"><i class="fas fa-file-excel"></i></div>
+                <h3 class="card-title">Atualização em massa</h3>
+                <p class="card-desc">Gere planilha de PNs, edite e envie para atualizar várias peças de uma vez.</p>
+                <span class="card-btn orange-btn"><i class="fas fa-arrow-right"></i> Acessar</span>
+                <i class="fas fa-file-excel card-watermark"></i>
+            </div>
 
-        @keyframes slideUp {
-            from {
-                opacity: 1;
-                transform: translateY(0);
-            }
-            to {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-        }
+            <!-- Card 4: Exportar base completa -->
+            <div class="action-card purple" style="cursor:default;" onclick="event.stopPropagation()">
+                <div class="card-icon purple-icon"><i class="fas fa-file-download"></i></div>
+                <h3 class="card-title">Exportar base completa</h3>
+                <p class="card-desc">Baixe a última planilha ou gere uma nova com todos os itens.</p>
+                <p id="exportLastGeneratedInfo" style="font-size:12px; color:#64748b; margin-bottom:12px; min-height:20px;">
+                    Carregando status da última geração...
+                </p>
+                <div class="export-btn-group">
+                    <button type="button" id="downloadLastExportBtn" class="btn-export-download" disabled>
+                        <i class="fas fa-download"></i> Baixar última planilha
+                    </button>
+                    <button type="button" id="generateNewExportBtn" class="btn-export-generate">
+                        <i class="fas fa-cog"></i> Gerar nova planilha
+                    </button>
+                </div>
+                <i class="fas fa-file-download card-watermark"></i>
+            </div>
+        </section>
 
-        /* Efeito de hover para os links */
-        .nav-link:hover, .mobile-nav-link:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
+        <!-- Statistics Section -->
+        <section class="stats-section">
+            <div class="stats-header">
+                <h3 class="stats-title">
+                    <i class="fas fa-chart-bar"></i> Estatísticas do Sistema
+                </h3>
+                <span class="stats-timestamp" id="statsTimestamp">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span id="statsTimestampText"></span>
+                </span>
+            </div>
 
-        /* Indicador visual da página atual */
-        .nav-link.current-page, .mobile-nav-link.current-page {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3));
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-    </style>
+            <div class="stats-grid">
+                <!-- Total de Peças -->
+                <div class="stat-card">
+                    <div class="stat-icon blue-stat"><i class="fas fa-cogs"></i></div>
+                    <div class="stat-info">
+                        <p class="stat-label">Total de Peças</p>
+                        <p class="stat-value" id="totalPecas">-</p>
+                    </div>
+                    <div class="stat-arrow"><i class="fas fa-arrow-right"></i></div>
+                </div>
 
-    <!-- Estilos CSS para navegação -->
-    <style>
-        /* Estilo para links ativos na navegação */
-        .nav-link.active, .mobile-nav-link.active {
-            background-color: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
+                <!-- Sistema -->
+                <div class="stat-card">
+                    <div class="stat-icon green-stat"><i class="fas fa-wifi"></i></div>
+                    <div class="stat-info">
+                        <p class="stat-label">Sistema</p>
+                        <p class="stat-value" id="sistemaStatus">-</p>
+                    </div>
+                    <div class="stat-indicator green" id="sistemaIndicator" style="opacity:0;"></div>
+                </div>
 
-        /* Animação suave para o menu mobile */
-        .mobile-menu-enter {
-            animation: slideDown 0.3s ease-out;
-        }
+                <!-- Banco de Dados -->
+                <div class="stat-card">
+                    <div class="stat-icon purple-stat"><i class="fas fa-database"></i></div>
+                    <div class="stat-info">
+                        <p class="stat-label">Banco de Dados</p>
+                        <p class="stat-value" id="bancoStatus">-</p>
+                    </div>
+                    <div class="stat-indicator blue" id="bancoIndicator" style="opacity:0;"></div>
+                </div>
+            </div>
+        </section>
+    </main>
 
-        .mobile-menu-exit {
-            animation: slideUp 0.3s ease-in;
-        }
-
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        @keyframes slideUp {
-            from {
-                opacity: 1;
-                transform: translateY(0);
-            }
-            to {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-        }
-
-        /* Efeito de hover para os links */
-        .nav-link:hover, .mobile-nav-link:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-
-        /* Indicador visual da página atual */
-        .nav-link.current-page, .mobile-nav-link.current-page {
-            background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(147, 51, 234, 0.3));
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        }
-    </style>
-
+    <!-- ======== JAVASCRIPT ======== -->
     <script>
-        // Configuração da API (definida em config.js)
-        // Usa window.API_BASE_URL que é configurado automaticamente
-
-        // Elementos do DOM
+        // ===== ELEMENTOS DO DOM =====
         const elements = {
             checkStatusBtn: document.getElementById('checkStatusBtn'),
             apiStatus: document.getElementById('apiStatus'),
@@ -389,14 +827,15 @@
             downloadLastExportBtn: document.getElementById('downloadLastExportBtn'),
             generateNewExportBtn: document.getElementById('generateNewExportBtn'),
             exportLastGeneratedInfo: document.getElementById('exportLastGeneratedInfo'),
-            // Elementos da navegação
             mobileMenuBtn: document.getElementById('mobileMenuBtn'),
-            mobileMenu: document.getElementById('mobileMenu')
-            // Removido código duplicado e erro de vírgula
-            // bancoStatus já está definido acima, não é necessário repeti-lo
+            sidebar: document.getElementById('sidebar'),
+            sidebarOverlay: document.getElementById('sidebarOverlay'),
+            sistemaIndicator: document.getElementById('sistemaIndicator'),
+            bancoIndicator: document.getElementById('bancoIndicator'),
+            statsTimestampText: document.getElementById('statsTimestampText')
         };
 
-        // Inicialização da aplicação (exige login)
+        // ===== INICIALIZAÇÃO =====
         document.addEventListener('DOMContentLoaded', async function() {
             const user = await auth.checkAuth();
             if (!user) return;
@@ -404,21 +843,35 @@
             applyNavPermissions(user.nivelPermissao);
             if (user.nivelPermissao === 0) checkApiStatus();
             refreshStats();
-            initNavigation();
+            initSidebar();
             bindExportAllActions();
             loadLatestExportAllInfo();
+            updateStatsTimestamp();
         });
 
+        // ===== API BASE =====
         function getApiBase() {
             return (typeof API_BASE_URL !== 'undefined' && API_BASE_URL) ? API_BASE_URL : '/api';
         }
 
-        function updateExportInfoText(message, isError = false) {
+        // ===== TIMESTAMP DA ÚLTIMA ATUALIZAÇÃO =====
+        function updateStatsTimestamp() {
+            if (elements.statsTimestampText) {
+                const now = new Date();
+                const dd = String(now.getDate()).padStart(2, '0');
+                const mm = String(now.getMonth() + 1).padStart(2, '0');
+                const yyyy = now.getFullYear();
+                const hh = String(now.getHours()).padStart(2, '0');
+                const min = String(now.getMinutes()).padStart(2, '0');
+                elements.statsTimestampText.textContent = 'Última atualização: ' + dd + '/' + mm + '/' + yyyy + ' ' + hh + ':' + min;
+            }
+        }
+
+        // ===== EXPORT: Funções de exportação da base completa =====
+        function updateExportInfoText(message, isError) {
             if (!elements.exportLastGeneratedInfo) return;
             elements.exportLastGeneratedInfo.textContent = message;
-            elements.exportLastGeneratedInfo.className = isError
-                ? 'text-sm text-red-600 mb-5'
-                : 'text-sm text-gray-500 mb-5';
+            elements.exportLastGeneratedInfo.style.color = isError ? '#ef4444' : '#64748b';
         }
 
         function setGenerateExportLoading(isLoading) {
@@ -434,11 +887,11 @@
             updateExportInfoText('Consultando última planilha gerada...');
             elements.downloadLastExportBtn.disabled = true;
             try {
-                const response = await fetch(`${getApiBase()}/export-pecas-all/latest`);
+                const response = await fetch(getApiBase() + '/export-pecas-all/latest');
                 if (!response.ok) throw new Error('Falha ao consultar status');
                 const data = await response.json();
                 if (data.available) {
-                    updateExportInfoText(`Última geração: ${data.generated_at_display || 'data indisponível'}`);
+                    updateExportInfoText('Última geração: ' + (data.generated_at_display || 'data indisponível'));
                     elements.downloadLastExportBtn.disabled = false;
                 } else {
                     updateExportInfoText('Nenhuma planilha gerada ainda. Clique em "Gerar nova planilha".');
@@ -452,12 +905,12 @@
             setGenerateExportLoading(true);
             updateExportInfoText('Gerando planilha completa. Isso pode levar alguns instantes...');
             try {
-                const response = await fetch(`${getApiBase()}/export-pecas-all/generate`, { method: 'POST' });
-                const data = await response.json().catch(() => ({}));
+                const response = await fetch(getApiBase() + '/export-pecas-all/generate', { method: 'POST' });
+                const data = await response.json().catch(function() { return {}; });
                 if (!response.ok) {
                     throw new Error(data.detail || 'Erro ao gerar planilha completa.');
                 }
-                updateExportInfoText(`Última geração: ${data.generated_at_display || 'agora mesmo'}`);
+                updateExportInfoText('Última geração: ' + (data.generated_at_display || 'agora mesmo'));
                 if (elements.downloadLastExportBtn) elements.downloadLastExportBtn.disabled = false;
             } catch (error) {
                 updateExportInfoText(error.message || 'Falha ao gerar a planilha completa.', true);
@@ -475,28 +928,28 @@
 
         async function downloadLatestExportAll() {
             if (!elements.downloadLastExportBtn) return;
-            const btn = elements.downloadLastExportBtn;
-            const prevHtml = btn.innerHTML;
+            var btn = elements.downloadLastExportBtn;
+            var prevHtml = btn.innerHTML;
             btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Baixando...';
             try {
-                const res = await fetch(`${getApiBase()}/export-pecas-all/download`, {
+                var res = await fetch(getApiBase() + '/export-pecas-all/download', {
                     headers: Object.assign({}, getExportAuthHeaders())
                 });
                 if (!res.ok) {
-                    const err = await res.json().catch(function() { return { detail: res.statusText }; });
+                    var err = await res.json().catch(function() { return { detail: res.statusText }; });
                     var msg = err.detail;
                     if (typeof msg === 'object' && msg !== null) msg = JSON.stringify(msg);
                     updateExportInfoText(msg || 'Erro ao baixar a planilha.', true);
                     return;
                 }
-                const blob = await res.blob();
+                var blob = await res.blob();
                 var filename = 'pecas.xlsx';
                 var cd = res.headers.get('Content-Disposition');
                 if (cd) {
                     var star = cd.match(/filename\*=UTF-8''([^;]+)/i);
                     if (star) {
-                        try { filename = decodeURIComponent(star[1].trim()); } catch (e) { /* keep default */ }
+                        try { filename = decodeURIComponent(star[1].trim()); } catch (e) { }
                     } else {
                         var m = cd.match(/filename="([^"]+)"/i) || cd.match(/filename=([^;\s]+)/i);
                         if (m) filename = m[1].replace(/"/g, '');
@@ -523,167 +976,70 @@
                 elements.downloadLastExportBtn.addEventListener('click', downloadLatestExportAll);
             }
         }
+
+        // ===== PERMISSÕES =====
         function applyNavPermissions(nivel) {
             document.querySelectorAll('[data-permission-min]').forEach(function(el) {
                 var min = parseInt(el.getAttribute('data-permission-min'), 10);
                 el.style.display = (nivel <= min) ? '' : 'none';
             });
-            var apiStatusBlock = document.getElementById('apiStatus');
-            if (apiStatusBlock) {
-                var block = apiStatusBlock.closest('.rounded-2xl');
-                if (block) block.style.display = (nivel === 0) ? '' : 'none';
-            }
+            // API Status block - only visible for admin (nivel 0)
+            var apiBlock = document.getElementById('apiStatusBlock');
+            if (apiBlock) apiBlock.style.display = (nivel === 0) ? '' : 'none';
         }
 
-        // FUNÇÕES DE NAVEGAÇÃO
-        // Função para inicializar a navegação
-        function initNavigation() {
-            // Event listener para o botão do menu mobile
-            if (elements.mobileMenuBtn && elements.mobileMenu) {
-                elements.mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+        // ===== SIDEBAR & MOBILE NAVIGATION =====
+        function initSidebar() {
+            // Mobile toggle
+            if (elements.mobileMenuBtn) {
+                elements.mobileMenuBtn.addEventListener('click', toggleSidebar);
             }
-            
-            // Marcar página atual como ativa
-            markCurrentPage();
-            
-            // Fechar menu mobile ao clicar fora dele
-            document.addEventListener('click', (e) => {
-                if (!elements.mobileMenuBtn.contains(e.target) && !elements.mobileMenu.contains(e.target)) {
-                    closeMobileMenu();
-                }
+            // Close on overlay click
+            if (elements.sidebarOverlay) {
+                elements.sidebarOverlay.addEventListener('click', closeSidebar);
+            }
+            // Close on Escape key
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeSidebar();
             });
         }
 
-        // Função para alternar o menu mobile
-        function toggleMobileMenu() {
-            if (elements.mobileMenu.classList.contains('hidden')) {
-                // Mostrar menu
-                elements.mobileMenu.classList.remove('hidden');
-                elements.mobileMenu.classList.add('mobile-menu-enter');
-                elements.mobileMenuBtn.innerHTML = '<i class="fas fa-times text-xl"></i>';
+        function toggleSidebar() {
+            if (!elements.sidebar) return;
+            var isOpen = elements.sidebar.classList.contains('open');
+            if (isOpen) {
+                closeSidebar();
             } else {
-                // Esconder menu
-                closeMobileMenu();
+                elements.sidebar.classList.add('open');
+                elements.sidebarOverlay.classList.add('active');
+                elements.mobileMenuBtn.innerHTML = '<i class="fas fa-times"></i>';
+                document.body.style.overflow = 'hidden';
             }
         }
 
-        // Função para fechar o menu mobile
-        function closeMobileMenu() {
-            if (elements.mobileMenu && !elements.mobileMenu.classList.contains('hidden')) {
-                elements.mobileMenu.classList.add('mobile-menu-exit');
-                setTimeout(() => {
-                    elements.mobileMenu.classList.add('hidden');
-                    elements.mobileMenu.classList.remove('mobile-menu-enter', 'mobile-menu-exit');
-                    elements.mobileMenuBtn.innerHTML = '<i class="fas fa-bars text-xl"></i>';
-                }, 300);
-            }
+        function closeSidebar() {
+            if (!elements.sidebar) return;
+            elements.sidebar.classList.remove('open');
+            if (elements.sidebarOverlay) elements.sidebarOverlay.classList.remove('active');
+            if (elements.mobileMenuBtn) elements.mobileMenuBtn.innerHTML = '<i class="fas fa-bars"></i>';
+            document.body.style.overflow = '';
         }
 
-        // Função para marcar a página atual como ativa
-        function markCurrentPage() {
-            const currentPath = window.location.pathname;
-            const navLinks = document.querySelectorAll('.nav-link, .mobile-nav-link');
-            
-            navLinks.forEach(link => {
-                const href = link.getAttribute('href');
-                
-                // Remover classe ativa de todos os links
-                link.classList.remove('active', 'current-page');
-                
-                // Adicionar classe ativa ao link correspondente à página atual
-                if (href === currentPath || 
-                    (currentPath === '/' && href === '/') ||
-                    (currentPath === '/adicionar' && href === '/adicionar') ||
-                    (currentPath === '/visualizar' && href === '/visualizar') ||
-                    (currentPath === '/atualizacao-em-massa' && href === '/atualizacao-em-massa')) {
-                    link.classList.add('active', 'current-page');
-                }
-            });
-        }
-        // Inicializar navegação quando o DOM estiver pronto
-        document.addEventListener('DOMContentLoaded', function() {
-            initNavigation();
-        });
-
-        // FUNÇÕES DE NAVEGAÇÃO
-        // Função para inicializar a navegação
-        function initNavigation() {
-            // Event listener para o botão do menu mobile
-            if (elements.mobileMenuBtn && elements.mobileMenu) {
-                elements.mobileMenuBtn.addEventListener('click', toggleMobileMenu);
-            }
-            
-            // Marcar página atual como ativa
-            markCurrentPage();
-            
-            // Fechar menu mobile ao clicar fora dele
-            document.addEventListener('click', (e) => {
-                if (!elements.mobileMenuBtn.contains(e.target) && !elements.mobileMenu.contains(e.target)) {
-                    closeMobileMenu();
-                }
-            });
-        }
-
-        // Função para alternar o menu mobile
-        function toggleMobileMenu() {
-            if (elements.mobileMenu.classList.contains('hidden')) {
-                // Mostrar menu
-                elements.mobileMenu.classList.remove('hidden');
-                elements.mobileMenu.classList.add('mobile-menu-enter');
-                elements.mobileMenuBtn.innerHTML = '<i class="fas fa-times text-xl"></i>';
-            } else {
-                // Esconder menu
-                closeMobileMenu();
-            }
-        }
-
-        // Função para fechar o menu mobile
-        function closeMobileMenu() {
-            if (elements.mobileMenu && !elements.mobileMenu.classList.contains('hidden')) {
-                elements.mobileMenu.classList.add('mobile-menu-exit');
-                setTimeout(() => {
-                    elements.mobileMenu.classList.add('hidden');
-                    elements.mobileMenu.classList.remove('mobile-menu-enter', 'mobile-menu-exit');
-                    elements.mobileMenuBtn.innerHTML = '<i class="fas fa-bars text-xl"></i>';
-                }, 300);
-            }
-        }
-
-        // Função para marcar a página atual como ativa
-        function markCurrentPage() {
-            const currentPath = window.location.pathname;
-            const navLinks = document.querySelectorAll('.nav-link, .mobile-nav-link');
-            
-            navLinks.forEach(link => {
-                const href = link.getAttribute('href');
-                
-                // Remover classe ativa de todos os links
-                link.classList.remove('active', 'current-page');
-                
-                // Adicionar classe ativa ao link correspondente à página atual
-                if (href === currentPath || 
-                    (currentPath === '/' && href === '/') ||
-                    (currentPath === '/adicionar' && href === '/adicionar') ||
-                    (currentPath === '/visualizar' && href === '/visualizar') ||
-                    (currentPath === '/atualizacao-em-massa' && href === '/atualizacao-em-massa')) {
-                    link.classList.add('active', 'current-page');
-                }
-            });
-        }
-
-        // Verificar status da API
+        // ===== VERIFICAR STATUS DA API =====
         async function checkApiStatus() {
             try {
-                elements.checkStatusBtn.innerHTML = '<span class="inline-block w-5 h-5 border-2 border-gray-300 border-t-primary-500 rounded-full animate-spin"></span> Verificando...';
+                elements.checkStatusBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
                 elements.checkStatusBtn.disabled = true;
-                
-                const response = await fetch(`${API_BASE_URL}/health`);
+
+                const response = await fetch(API_BASE_URL + '/health');
                 const data = await response.json();
-                
+
                 if (data.status === 'healthy') {
                     updateApiStatus(true, 'Sistema funcionando perfeitamente');
                     elements.sistemaStatus.textContent = 'Online';
                     elements.bancoStatus.textContent = 'Conectado';
+                    if (elements.sistemaIndicator) elements.sistemaIndicator.style.opacity = '1';
+                    if (elements.bancoIndicator) elements.bancoIndicator.style.opacity = '1';
                 } else {
                     updateApiStatus(false, data.message);
                     elements.sistemaStatus.textContent = 'Offline';
@@ -700,12 +1056,12 @@
             }
         }
 
-        // Atualizar estatísticas
+        // ===== ATUALIZAR ESTATÍSTICAS =====
         async function refreshStats() {
             try {
-                const response = await fetch(`${API_BASE_URL}/stats`);
+                const response = await fetch(API_BASE_URL + '/stats');
                 const data = await response.json();
-                
+
                 if (data.status === 'success') {
                     elements.totalPecas.textContent = data.total_pecas.toLocaleString('pt-BR');
                 }
@@ -714,22 +1070,23 @@
             }
         }
 
-        // Atualizar status da API na interface
+        // ===== ATUALIZAR STATUS DA API NA INTERFACE =====
         function updateApiStatus(isOnline, message) {
-            const statusIndicator = elements.apiStatus.querySelector('span:first-child');
-            const statusText = elements.apiStatus.querySelector('span:last-child');
-            
+            var statusIndicator = elements.apiStatus.querySelector('span:first-child');
+            var statusText = elements.apiStatus.querySelector('span:last-child');
+
             if (isOnline) {
-                statusIndicator.className = 'w-3 h-3 rounded-full inline-block bg-green-500 shadow-lg shadow-green-500/50';
+                statusIndicator.style.background = '#10b981';
+                statusIndicator.style.boxShadow = '0 0 8px rgba(16, 185, 129, 0.5)';
                 statusText.textContent = message;
-                statusText.className = 'text-green-600 font-medium';
+                statusText.style.color = '#10b981';
             } else {
-                statusIndicator.className = 'w-3 h-3 rounded-full inline-block bg-red-500 shadow-lg shadow-red-500/50';
+                statusIndicator.style.background = '#ef4444';
+                statusIndicator.style.boxShadow = '0 0 8px rgba(239, 68, 68, 0.5)';
                 statusText.textContent = message;
-                statusText.className = 'text-red-600 font-medium';
+                statusText.style.color = '#ef4444';
             }
         }
     </script>
 </body>
 </html>
-
